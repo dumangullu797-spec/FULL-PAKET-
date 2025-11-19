@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gubikos 7 - Uzman Sürüm</title>
+
+    <!-- ============================================================================== -->
+    <!-- BÖLÜM: CSS STİLLERİ                                                          -->
+    <!-- ============================================================================== -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Press+Start+2P&display=swap');
+        :root { --background-url: url('https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?q=80&w=2070&auto=format&fit=crop'); }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Roboto', sans-serif; user-select: none; background-color: #000; cursor: default; }
+        .hidden { display: none !important; }
+        #boot-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; font-size: 16px; white-space: pre-wrap; z-index: 10000; }
+        #boot-screen .cursor { display: inline-block; background-color: #0f0; width: 10px; height: 18px; animation: blink 1s step-end infinite; }
+        @keyframes blink { from, to { background-color: transparent } 50% { background-color: #0f0; } }
+        #gubikos-desktop { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s; }
+        #screen-wrapper { position: relative; overflow: hidden; background-color: #000; box-shadow: 0 0 35px rgba(0,0,0,0.6); border: 2px solid #1a1a1a; transition: all 0.3s ease-out; transform-origin: center center; }
+        .crt-effect { border-radius: 12% / 9%; animation: crt-flicker 0.1s infinite; filter: blur(0.5px); }
+        .crt-effect::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; z-index: 2; pointer-events: none; animation: crt-wave 20s linear infinite; }
+        .crt-effect::after { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; box-shadow: inset 0 0 120px rgba(0,0,0,0.9); border-radius: inherit; z-index: 2; pointer-events: none; }
+        @keyframes crt-flicker { 0% { opacity: 1; } 48% { opacity: 1; } 50% { opacity: 0.95; } 52% { opacity: 1; } }
+        @keyframes crt-wave { from { background-position-y: 0; } to { background-position-y: -400px; } }
+        #desktop-background { width: 100%; height: 100%; background: var(--background-url) no-repeat center center; background-size: cover; position: absolute; top:0; left:0; z-index: 1; transition: background-image 0.5s ease-in-out; }
+        #desktop-icons { position: relative; z-index: 10; padding: 20px; display: flex; flex-flow: column wrap; align-content: flex-start; gap: 10px; height: calc(100% - 40px); }
+        .desktop-icon { width: 80px; text-align: center; padding: 10px; cursor: pointer; border-radius: 5px; }
+        .desktop-icon:hover { background-color: rgba(255, 255, 255, 0.2); }
+        .desktop-icon .icon-fs { font-size: 50px; line-height: 50px; }
+        .desktop-icon span { display: block; color: white; text-shadow: 1px 1px 2px black; margin-top: 5px; font-size: 14px; word-wrap: break-word; }
+        #taskbar { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; background-color: rgba(30, 30, 30, 0.8); backdrop-filter: blur(10px); display: flex; align-items: center; color: white; z-index: 5000; }
+        #start-button { padding: 0 15px; font-weight: bold; cursor: pointer; height: 100%; display: flex; align-items: center; }
+        #start-button:hover { background-color: rgba(0, 150, 255, 0.5); }
+        #start-menu { position: absolute; bottom: 40px; left: 0; width: 250px; background-color: rgba(35, 35, 35, 0.9); backdrop-filter: blur(10px); border: 1px solid #555; border-bottom: none; z-index: 4999; color: white; }
+        #start-menu ul { list-style: none; margin: 0; padding: 10px 0; }
+        #start-menu ul li { padding: 12px 20px; cursor: pointer; display:flex; align-items: center; gap: 10px; }
+        #start-menu ul li:hover { background-color: rgba(0, 150, 255, 0.5); }
+        #clock { padding: 0 15px; font-size: 14px; margin-left: auto; }
+        #window-area { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 40px); pointer-events: none; z-index: 200; }
+        .window { min-width: 300px; min-height: 200px; background-color: rgba(240, 240, 240, 0.95); backdrop-filter: blur(5px); border: 1px solid #666; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; position: absolute; pointer-events: all; }
+        .title-bar { width: 100%; height: 30px; background-color: #333; color: white; display: flex; align-items: center; justify-content: space-between; cursor: move; border-top-left-radius: 7px; border-top-right-radius: 7px; }
+        .title-bar .title { padding-left: 10px; font-weight: bold; }
+        .title-bar .window-controls button { width: 30px; height: 30px; border: none; background: none; color: white; font-size: 16px; cursor: pointer; line-height: 30px; }
+        .title-bar .window-controls button:hover { background-color: #555; }
+        .title-bar .window-controls .close-btn:hover { background-color: #e81123; }
+        .title-bar .window-controls .maximize-btn:hover { background-color: #555; }
+        .window .window-content { flex-grow: 1; padding: 10px; overflow: auto; display: flex; flex-direction: column; }
+        .window .window-content iframe { width: 100%; height: 100%; border: none; background-color: #000; }
+        .window .window-content textarea { width: 100%; height: 100%; border: none; resize: none; font-family: 'Courier New', monospace; font-size: 14px; }
+        .external-site-window { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; gap: 15px; }
+        .external-site-window p { font-size: 14px; color: #333; }
+        .external-site-window .open-new-tab-btn { padding: 10px 20px; background-color: #0078D7; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .external-site-window .open-new-tab-btn:hover { background-color: #005a9e; }
+        #notification-area { position: fixed; bottom: 50px; right: 20px; z-index: 9999; }
+        .notification { background-color: #2c3e50; color: white; padding: 15px; border-radius: 5px; margin-top: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transform: translateX(100%); animation: slideIn 0.5s forwards; }
+        .notification.error { background-color: #e74c3c; }
+        .notification.success { background-color: #2ecc71; }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+        #download-manager { position: fixed; bottom: 50px; left: 20px; width: 300px; padding: 15px; background-color: rgba(44, 62, 80, 0.9); backdrop-filter: blur(5px); color: white; border-radius: 5px; z-index: 9998; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border: 1px solid #34495e; }
+        #download-manager p { margin: 0 0 10px 0; font-size: 14px; }
+        .progress-bar { width: 100%; background-color: #2c3e50; border-radius: 3px; }
+        .progress-bar-inner { width: 0%; height: 20px; background-color: #2ecc71; border-radius: 3px; text-align: center; line-height: 20px; font-size: 12px; transition: width 0.2s linear; }
+        #bsod { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0078D7; color: white; font-family: 'Courier New', monospace; z-index: 20000; text-align: center; padding: 50px; }
+        #bsod h1 { font-size: 80px; margin: 0; }
+        #bsod p { font-size: 20px; }
+        .error-message-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #f0f0f0; border: 2px solid #0078d7; box-shadow: 0 0 20px rgba(0,0,0,0.5); padding: 20px; z-index: 15000; text-align: center; font-family: 'Roboto', sans-serif; }
+        .error-message-box h3 { margin-top: 0; color: #cc0000; }
+        .info-panel { text-align: center; padding: 5px; }
+        .info-panel h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 10px; margin-bottom: 15px; }
+        .info-panel p { font-size: 16px; margin: 10px 0; }
+        #bank-balance { color: #27ae60; font-weight: bold; font-family: 'Courier New', monospace; }
+        #hardware-list { list-style: none; padding: 0; margin: 0; }
+        #hardware-list li { list-style: none; margin-bottom: 10px; text-align: left; }
+        #clicker-game-area { position: relative; width: 100%; height: 100%; background: #eee; }
+        #clicker-target { position: absolute; width: 50px; height: 50px; background: #e74c3c; border-radius: 50%; cursor: pointer; }
+        #typer-word-display { font-size: 32px; font-weight: bold; margin: 15px 0; letter-spacing: 2px; }
+        #typer-input { width: 90%; padding: 10px; font-size: 18px; text-align: center; }
+        #typer-timer { font-size: 24px; color: #e74c3c; margin-top: 15px;}
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .store-item { border: 1px solid #ccc; border-radius: 5px; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; background: #fff; }
+        .store-item h4 { margin: 0 0 5px 0; font-size: 14px; }
+        .store-item p { margin: 5px 0; font-size: 12px; color: #555; flex-grow: 1; }
+        .store-item .price { font-weight: bold; color: #0F9D58; margin-bottom: 10px; }
+        .store-item button { background-color: #4285F4; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 3px; }
+        .store-item button:hover { background-color: #357ae8; }
+        .store-item button:disabled { background-color: #aaa; cursor: not-allowed; }
+        .store-item .owned { color: #2ecc71; font-weight: bold; }
+        .store-item pre { white-space: pre; font-size: 10px; margin: 5px auto; line-height: 1; color: #333; text-align: center; }
+        .context-menu { position: fixed; z-index: 10000; width: 200px; background: rgba(240, 240, 240, 0.95); backdrop-filter: blur(5px); border: 1px solid #999; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .context-menu ul { list-style: none; padding: 5px 0; margin: 0; }
+        .context-menu ul li { padding: 8px 15px; cursor: pointer; font-size: 14px; }
+        .context-menu ul li:hover { background: #0078D7; color: white; }
+        .cpu-z-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; font-size: 14px; }
+        .cpu-z-grid strong { color: #0078D7; }
+        .status-ok { color: #27ae60; font-weight: bold; }
+        .status-fake { color: #e74c3c; font-weight: bold; }
+        #screen-damage-overlay { position: absolute; top: 0; left: 0; width: 50%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.8), rgba(0,0,0,0.8) 4px, rgba(255,0,255,0.3) 5px, rgba(0,255,255,0.3) 10px), repeating-linear-gradient(90deg, rgba(0,0,0,0.7), rgba(0,0,0,0.7) 2px, rgba(255,0,0,0.5) 3px, rgba(0,0,255,0.5) 6px); z-index: 19000; pointer-events: none; mix-blend-mode: hard-light; }
+        .wallpaper-picker { display: flex; gap: 15px; justify-content: center; padding: 10px; }
+        .wallpaper-thumb { width: 120px; height: 80px; border: 2px solid #ccc; border-radius: 5px; cursor: pointer; background-size: cover; background-position: center; }
+        .wallpaper-thumb:hover { border-color: #0078D7; transform: scale(1.05); }
+        .settings-grid { display: grid; grid-template-columns: auto 1fr; gap: 15px; align-items: center; padding: 10px; }
+        .settings-grid label { font-weight: bold; text-align: right; }
+        .settings-grid select { padding: 5px; width: 100%; }
+        .settings-grid button { grid-column: 2; justify-self: end; padding: 8px 16px; background-color: #0078D7; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .settings-grid button:hover { background-color: #005a9e; }
+    </style>
+</head>
+<body>
+    <!-- ============================================================================== -->
+    <!-- BÖLÜM: HTML YAPISI                                                            -->
+    <!-- ============================================================================== -->
+    <div id="boot-screen"><pre id="boot-log">Gubikos 7 Önyükleyici v7.2 başlatılıyor...</pre><div class="cursor">_</div></div>
+    <div id="gubikos-desktop" class="hidden">
+        <div id="screen-wrapper">
+            <div id="desktop-background"></div>
+            <div id="desktop-icons"></div>
+            <div id="window-area"></div>
+            <div id="taskbar">
+                <div id="start-button">💎 Gubi</div>
+                <div id="start-menu" class="hidden">
+                    <ul>
+                        <li id="start-menu-settings">⚙️ <span>Ayarlar</span></li>
+                        <li id="start-menu-store">📦 <span>PlayStore</span></li>
+                        <li id="start-menu-sahibinden">🛍️ <span>Sahibinden</span></li>
+                        <li id="start-menu-feedback">✉️ <span>Yorum Gönder</span></li>
+                        <li id="start-menu-about">ℹ️ <span>Hakkında</span></li>
+                    </ul>
+                </div>
+                <div id="running-apps"></div>
+                <div id="clock">12:00:00</div>
+            </div>
+        </div>
+        <div id="download-manager" class="hidden">
+            <p><strong>İndirme Yöneticisi</strong></p>
+            <p id="download-item-name">İndirilecek bir şey yok...</p>
+            <div class="progress-bar"><div class="progress-bar-inner" id="download-progress">0%</div></div>
+        </div>
+        <div id="notification-area"></div>
+    </div>
+    <div id="bsod" class="hidden">
+        <h1>:(</h1>
+        <p>Bilgisayarınız bir sorunla karşılaştı ve yeniden başlatılması gerekiyor.<br>Yalnızca bazı hata bilgileri topluyoruz ve ardından sizin için yeniden başlatacağız.</p>
+        <p>Daha fazla bilgi için bu hata kodunu aratabilirsiniz: KERNEL_SECURITY_CHECK_FAILURE</p>
+    </div>
+    
+    <div id="desktop-context-menu" class="context-menu hidden">
+        <ul>
+            <li id="ctx-display-settings">🖥️ Görüntü Ayarları</li>
+            <li id="ctx-personalize">🎨 Kişiselleştir</li>
+            <li id="ctx-new-folder-desktop">📁 Yeni Klasör</li>
+            <li id="ctx-new-file-desktop">📝 Metin Belgesi</li>
+        </ul>
+    </div>
+
+
+    <!-- ============================================================================== -->
+    <!-- BÖLÜM: JAVASCRIPT İŞLEVSELLİĞİ                                                -->
+    <!-- ============================================================================== -->
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- GLOBAL DEĞİŞKENLER VE DOM ELEMENTLERİ ---
+        let gameState = {};
+        let highestZIndex = 200;
+        let openWindows = {};
+        let isDownloading = false;
+        let desktopItemCount = 0;
+        let systemLoad = 0;
+
+        const bootScreen = document.getElementById('boot-screen');
+        const bootLog = document.getElementById('boot-log');
+        const gubikosDesktop = document.getElementById('gubikos-desktop');
+        const screenWrapper = document.getElementById('screen-wrapper');
+        const clockElement = document.getElementById('clock');
+        const windowArea = document.getElementById('window-area');
+        const notificationArea = document.getElementById('notification-area');
+        const downloadManager = document.getElementById('download-manager');
+        const downloadItemName = document.getElementById('download-item-name');
+        const downloadProgress = document.getElementById('download-progress');
+        const desktopIcons = document.getElementById('desktop-icons');
+        const desktopBackground = document.getElementById('desktop-background');
+        const startButton = document.getElementById('start-button');
+        const startMenu = document.getElementById('start-menu');
+        const bsod = document.getElementById('bsod');
+        const desktopContextMenu = document.getElementById('desktop-context-menu');
+        
+        // --- VERİ TABANLARI (YENİ EKLENENLERLE BİRLİKTE) ---
+        const cpuCatalog = [ { id: 'cpu1', name: 'Intel 8086', price: 0, type: 'cpu', level: 1, desc: 'Tarih öncesi.', image: `  .---.\n  |o o|\n  '---'`, brand: 'Intel', fakeChance: 0 }, { id: 'cpu2', name: 'Intel Core i3-2100', price: 120, type: 'cpu', level: 2, desc: 'Çift çekirdekli temel işlemci.', image: ` .-----. \n| INTEL |\n|  i3   |\n'-----'`, brand: 'Intel', fakeChance: 0.05 }, { id: 'cpu3', name: 'AMD Ryzen 3 1200', price: 250, type: 'cpu', level: 3, desc: '4 çekirdekli giriş seviyesi.', image: ` .-----. \n|  AMD  |\n| Ryzen3|\n'-----'`, brand: 'AMD', fakeChance: 0.1 }, { id: 'cpu4', name: 'Intel Core i5-7400', price: 600, type: 'cpu', level: 4, desc: 'Orta segment oyunculuk.', image: ` .-----. \n| INTEL |\n|  i5   |\n'--■--'`, brand: 'Intel', fakeChance: 0.1 }, { id: 'cpu5', name: 'AMD Ryzen 5 3600', price: 1500, type: 'cpu', level: 5, desc: 'Fiyat/performans kralı.', image: ` .-----. \n|  AMD  |\n| Ryzen5|\n'--■--'`, brand: 'AMD', fakeChance: 0.15 }, { id: 'cpu6', name: 'Intel Core i7-9700K', price: 3200, type: 'cpu', level: 6, desc: 'Yüksek performanslı oyun.', image: ` .-----. \n| INTEL |\n| i7-K  |\n'-■-■-'`, brand: 'Intel', fakeChance: 0.2 }, { id: 'cpu7', name: 'AMD Ryzen 7 5800X', price: 7000, type: 'cpu', level: 7, desc: 'Profesyoneller için 8 çekirdek.', image: ` .-----. \n|  AMD  |\n|Ryzen7X|\n'-■-■-'`, brand: 'AMD', fakeChance: 0.25 }, { id: 'cpu8', name: 'Intel Core i9-9900K', price: 15000, type: 'cpu', level: 8, desc: 'Bir zamanların efsanesi.', image: ` .-----. \n| INTEL |\n| i9-K  |\n'■■■■■'`, brand: 'Intel', fakeChance: 0.3 }, { id: 'cpu9', name: 'AMD Ryzen 9 5950X', price: 25000, type: 'cpu', level: 9, desc: 'Render ve yayın canavarı.', image: ` .-----. \n|  AMD  |\n|Ryzen9X|\n'■■■■■'`, brand: 'AMD', fakeChance: 0.4 }, ];
+        const gpuCatalog = [ { id: 'gpu1', name: 'Dahili Grafik', price: 0, type: 'gpu', level: 1, desc: 'Sadece görüntü verir.', image: `+-------+\n| CHIP  |\n+-------+`, power: 10, fakeChance: 0 }, { id: 'gpu2', name: 'NVIDIA GT 730', price: 180, type: 'gpu', level: 2, desc: 'Eski oyunları kasmadan oynatır.', image: `+--[=]--+\n|NVIDIA |\n| GT 730|\n+-------+`, power: 50, fakeChance: 0.1 }, { id: 'gpu3', name: 'AMD RX 550', price: 450, type: 'gpu', level: 3, desc: 'e-Spor için giriş seviyesi.', image: `+-[ fan ]-+\n| AMD RX  |\n|   550   |\n+---------+`, power: 80, fakeChance: 0.1 }, { id: 'gpu4', name: 'NVIDIA GTX 1050 Ti', price: 1200, type: 'gpu', level: 4, desc: 'Modern oyunlar için giriş seviyesi.', image: `+--[ fan ]--+\n|NVIDIA GTX |\n|  1050 Ti  |\n+-----------+`, power: 150, fakeChance: 0.15 }, { id: 'gpu5', name: 'AMD RX 5700 XT', price: 3000, type: 'gpu', level: 5, desc: '1080p oyunculuğun efendisi.', image: `+-[fan]-[fan]-+\n|  AMD RADEON |\n|   RX 5700XT |\n+-------------+`, power: 300, fakeChance: 0.2 }, { id: 'gpu6', name: 'NVIDIA RTX 2060', price: 5500, type: 'gpu', level: 6, desc: 'Işın izleme dünyasına giriş.', image: `+-[ fan ]--[ fan ]-+\n|   NVIDIA GeForce  |\n|      RTX 2060     |\n+-------------------+`, power: 450, fakeChance: 0.25 }, { id: 'gpu7', name: 'AMD RX 6800 XT', price: 9000, type: 'gpu', level: 7, desc: 'Saf güç ve yüksek VRAM.', image: `+-[f]-[f]-[f]-+\n|  AMD RADEON |\n|  RX 6800 XT |\n+-------------+`, power: 700, fakeChance: 0.3 }, { id: 'gpu8', name: 'NVIDIA RTX 3080', price: 20000, type: 'gpu', level: 8, desc: '4K oyunculuğun kapılarını aralar.', image: `+-[fan]-[fan]-[fan]-+\n|  NVIDIA GeForce   |\n|     RTX 3080      |\n+-------------------+`, power: 1000, fakeChance: 0.35 }, { id: 'gpu9', name: 'GubiFORCE RTX 5070', price: 45000, type: 'gpu', level: 9, desc: 'Geleceğin teknolojisi, bugün!', image: `+==[f]==[f]==[f]==+\n|   GubiFORCE RTX   |\n|       5070        |\n+===================+`, power: 2000, fakeChance: 0.5 }, ];
+        const ramCatalog = [ { id: 'ram1', name: 'NoName 1GB', price: 0, type: 'ram', level: 1, desc: 'Tek modül, yavaş.', image: `---[    ]---`, mhz: 1333, brand: 'NoName', fakeChance: 0 }, { id: 'ram2', name: 'Kingston 2GB', price: 80, type: 'ram', level: 2, desc: 'Daha fazla uygulama, daha az takılma.', image: `---[ K ]---`, mhz: 1600, brand: 'Kingston', fakeChance: 0.1 }, { id: 'ram3', name: 'Corsair Vengeance 4GB', price: 400, type: 'ram', level: 3, desc: 'Soğutuculu, hızlı bellek.', image: `M--[CORS]--M`, mhz: 2400, brand: 'Corsair', fakeChance: 0.15 }, { id: 'ram4', name: 'G.Skill Ripjaws 8GB', price: 1200, type: 'ram', level: 4, desc: 'Oyuncular için çift kanal kit.', image: `W--[G.S.]--W`, mhz: 3200, brand: 'G.Skill', fakeChance: 0.2 }, ];
+        const fanCatalog = [ { id: 'fan1', name: 'Stok Soğutucu', price: 0, type: 'fan', level: 1, desc: 'İşlemciyle gelen temel soğutucu.', image: `  (---)  \n (  *  )\n  (---)  `, boost: 1.0, fakeChance: 0 }, { id: 'fan2', name: 'Kule Tipi Soğutucu', price: 200, type: 'fan', level: 2, desc: 'Daha iyi soğutma, daha az ses.', image: `  |||||  \n (  O  )\n  |||||  `, boost: 1.1, fakeChance: 0.1 }, { id: 'fan3', name: 'Çift Kule Soğutucu', price: 600, type: 'fan', level: 3, desc: 'Hızaşırtma için ideal.', image: ` |i|i|i| \n(   O   )\n |i|i|i| `, boost: 1.2, fakeChance: 0.2 }, { id: 'fan4', name: 'Sıvı Soğutma 240mm', price: 1500, type: 'fan', level: 4, desc: 'Sessiz ve verimli soğutma.', image: `~~[O]~~[O]~~\n     H\n     H`, boost: 1.4, fakeChance: 0.3 }, ];
+        const monitorCatalog = [ { id: 'mon1', name: '15" CRT Monitör', price: 0, type: 'monitor', level: 1, desc: '640x480, 20Hz. Göz yorucu ve küçük.' }, { id: 'mon2', name: '17" LCD Monitör', price: 250, type: 'monitor', level: 2, desc: '800x600, 30Hz. Biraz daha büyük ekran.' }, { id: 'mon3', name: '21" FHD Monitör', price: 800, type: 'monitor', level: 3, desc: '1280x720, 60Hz. Daha net ve akıcı.' }, { id: 'mon4', name: '24" Oyuncu Monitörü', price: 2200, type: 'monitor', level: 4, desc: '1920x1080, 75Hz. Geniş ve hızlı.' }, { id: 'mon5', name: '27" QHD Yüksek Hz Monitör', price: 5500, type: 'monitor', level: 5, desc: '2560x1440, 144Hz. Harika bir oyun deneyimi!' }, ];
+        const ssdCatalog = [ { id: 'ssd1', name: '60MB H-SSD', price: 0, type: 'ssd', level: 1, capacity: 60 }, { id: 'ssd2', name: '300MB H-SSD', price: 150, type: 'ssd', level: 2, capacity: 300 }, { id: 'ssd3', name: '550MB GubiSSD', price: 400, type: 'ssd', level: 3, capacity: 550 }, { id: 'ssd4', name: '1.05GB GubiSSD Pro', price: 1000, type: 'ssd', level: 4, capacity: 1050 }, { id: 'ssd5', name: '2.05GB GubiSSD Ultra', price: 2500, type: 'ssd', level: 5, capacity: 2050 }, ];
+        const baseApps = [ { id: 'terminal', name: 'GubiTerminal', icon: '💻', action: openTerminal }, { id: 'gubigo', name: 'GubiGo', icon: '🌐', action: openGubiGo }, { id: 'settings', name: 'Ayarlar', icon: '⚙️', action: openSettings }, { id: 'store', name: 'PlayStore', icon: '📦', action: openStore }, { id: 'sahibinden', name: 'Sahibinden', icon: '🛍️', action: openSahibinden }, { id: 'bank', name: 'Banka', icon: '🏦', action: openBank }, ];
+        const gameCatalog = [ { id: 'clicker', name: 'Nokta Avcısı', icon: '🎯', price: 10, desc: 'Ekranda çılgınca kaçan kırmızı noktayı yakala!', size: 25, reqCpu: 1, reqGpu: 1, load: 0.2, action: openClickerGame }, { id: 'guess', name: 'Sayı Tahmin', icon: '🔢', price: 10, desc: 'Aklımdaki sayıyı 10 denemede bulabilir misin?', size: 15, reqCpu: 1, reqGpu: 1, load: 0.1, action: openGuessGame }, { id: 'typer', name: 'Hızlı Parmaklar', icon: '⌨️', price: 150, desc: 'Ekranda beliren kelimeleri ne kadar hızlı yazabilirsin?', size: 50, reqCpu: 2, reqGpu: 1, load: 0.3, action: openTyperGame }, { id: 'valorant', name: 'Valorant Mobile', icon: '🔫', price: 0, desc: 'Popüler taktiksel nişancı oyunu. (Deneysel)', size: 180, reqCpu: 3, reqGpu: 2, virus: 'Trojan.Kernel.VBS', load: 0.7, action: launchValorant }, { id: 'antivirus', name: 'GubiAntivirus', icon: '🛡️', price: 500, desc: 'Sisteminizi Trojan gibi tehditlere karşı korur.', size: 85, reqCpu: 2, reqGpu: 1, load: 0.4, action: runAntiVirus }, { id: 'gubisphere', name: 'GubiSphere 3D', icon: '🔮', price: 200, desc: 'Basit ama güzel bir 3D deneyimi. Yüksek donanım gerektirir.', size: 120, reqCpu: 5, reqGpu: 4, load: 0.8, action: openGubiSphere3D }, { id: 'darkweb', name: 'Dark Web Access', icon: '💀', price: 10, desc: 'Güvenli olmayan bir ağa erişim. Riskler size aittir.', size: 10, reqCpu: 1, reqGpu: 1, load: 0.1, action: openDarkWeb }, { id: 'cpuz', name: 'CPU-Z', icon: '📊', price: 25, desc: 'Sistem donanımını ve durumunu analiz eder.', size: 30, reqCpu: 1, reqGpu: 1, load: 0.2, action: openCpuZ } ];
+        const darkWebCatalog = [ { id: 'cheat1', name: 'Anlık Para Takviyesi', price: 5, desc: '+250 GubiCoin verir. (Risk: Düşük)', effect: 'add_money', value: 250, virus: 'Adware.Pop-up.Gen' }, { id: 'cheat2', name: 'Büyük Servet Paketi', price: 20, desc: '+2000 GubiCoin verir. (Risk: Orta)', effect: 'add_money', value: 2000, virus: 'Spyware.Keylogger.Gen' }, { id: 'cheat3', name: 'Sınırsız Varlık Protokolü', price: 50, desc: '+15000 GubiCoin verir. (Risk: Yüksek)', effect: 'add_money', value: 15000, virus: 'Ransomware.Encrypt.File' }, { id: 'dw_bsod', name: 'Sistem Dengesizleştirici', price: 100, desc: 'Anında mavi ekran hatasına neden olur. (Risk: Kritik)', effect: 'bsod' }, { id: 'dw_crack', name: 'Ekran Kırılma Virüsü', price: 250, desc: 'Monitörünüzün yarısını kalıcı olarak bozar. (Risk: Kalıcı Hasar)', effect: 'screen_break' }, { id: 'dw_format', name: 'Total Sistem Temizliği', price: 500, desc: 'Gubikos 7yi SİLER. Her şeye baştan başlarsınız. (Risk: Geri Dönülemez)', effect: 'format' } ];
+        const wallpapers = [ 'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?q=80&w=2070&auto=format&fit=crop', 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop' ];
+        const allResolutions = ['640x480', '800x600', '1280x720', '1920x1080', '2560x1440'];
+        const allHz = [20, 30, 60, 75, 144];
+
+        // --- OYUN DURUMU VE VERİ YÖNETİMİ ---
+        function initializeGameState() {
+            const defaultState = { money: 50, hardware: { cpu: { level: 1, isFake: false }, ram: { level: 1, isFake: false }, gpu: { level: 1, isFake: false }, monitor: { level: 1, isFake: false }, ssd: { level: 1, isFake: false }, fan: { level: 1, isFake: false } }, ownedGames: [], desktopItems: [], os: "Gubikos 7", hasVirus: false, virusType: 'None', screenIsBroken: false, wallpaperUrl: wallpapers[0], display: null };
+            let savedState = null;
+            try { const savedString = localStorage.getItem('gubikosGameState'); if (savedString) { savedState = JSON.parse(savedString); } } catch (e) { console.error("Kayıt dosyası okunurken hata oluştu:", e); localStorage.removeItem('gubikosGameState'); }
+            if (savedState) { gameState = { ...defaultState, ...savedState, hardware: { ...defaultState.hardware, ...(savedState.hardware || {}) } }; } else { gameState = defaultState; }
+            if (!gameState.display) { const mon = monitorCatalog.find(m => m.level === gameState.hardware.monitor.level) || monitorCatalog[0]; const [res, hz] = mon.desc.split(', '); gameState.display = { resolution: res, hz: parseInt(hz, 10) }; }
+        }
+        function saveGameState() { localStorage.setItem('gubikosGameState', JSON.stringify(gameState)); }
+
+        // --- PERFORMANS VE YARDIMCI FONKSİYONLAR ---
+        function getPerformanceBoost() { const fan = fanCatalog.find(f => f.level === (gameState.hardware.fan.level || 1)); return fan ? fan.boost : 1.0; }
+        
+        function getPerformanceFrameTime() {
+             const hz = gameState.display.hz || 30;
+             const baseFrameTime = 1000 / hz;
+             const cpuLevel = gameState.hardware.cpu.isFake ? Math.max(1, (gameState.hardware.cpu.level || 1) - 2) : (gameState.hardware.cpu.level || 1);
+             const cpuFactor = 1 + Math.max(0, (5 - cpuLevel) * 0.2);
+             return (baseFrameTime * cpuFactor) / getPerformanceBoost();
+        }
+
+        function calculatePerformanceDelay() { const ramLevel = gameState.hardware.ram.level || 1; const baseDelay = 1500 - (ramLevel * 300); return Math.max(100, baseDelay / getPerformanceBoost()); }
+        function getSsdStats() { const ssdLevel = gameState.hardware.ssd.level || 1; const currentSsd = ssdCatalog.find(s => s.level === ssdLevel) || ssdCatalog[0]; const totalSsd = currentSsd.capacity; let usedSsd = 0; (gameState.ownedGames || []).forEach(gameId => { const game = gameCatalog.find(g => g.id === gameId); if(game) usedSsd += game.size; }); return { totalSsd, usedSsd }; }
+        function showNotification(message, type = 'info') { const notif = document.createElement('div'); notif.className = `notification ${type}`; notif.textContent = message; notificationArea.appendChild(notif); setTimeout(() => notif.remove(), 4000); }
+
+        // --- GÖRSEL VE ARAYÜZ FONKSİYONLARI ---
+        function applyDisplaySettings() {
+            const { resolution } = gameState.display;
+            const [targetWidth, targetHeight] = resolution.split('x').map(Number);
+            screenWrapper.style.width = `${targetWidth}px`;
+            screenWrapper.style.height = `${targetHeight}px`;
+            const maxBrowserWidth = window.innerWidth * 0.95;
+            const maxBrowserHeight = window.innerHeight * 0.95;
+            let scaleFactor = 1;
+            if (targetWidth > maxBrowserWidth || targetHeight > maxBrowserHeight) {
+                scaleFactor = Math.min(maxBrowserWidth / targetWidth, maxBrowserHeight / targetHeight);
+            }
+            screenWrapper.style.transform = `scale(${scaleFactor})`;
+            
+            if (gameState.hardware.monitor.level === 1) { screenWrapper.classList.add('crt-effect'); } else { screenWrapper.classList.remove('crt-effect'); }
+            
+            document.documentElement.style.setProperty('--background-url', `url('${gameState.wallpaperUrl}')`);
+        }
+        function applyScreenDamage() { if (document.getElementById('screen-damage-overlay')) return; const overlay = document.createElement('div'); overlay.id = 'screen-damage-overlay'; screenWrapper.prepend(overlay); gameState.screenIsBroken = true; saveGameState(); }
+        function updateClock() { clockElement.textContent = new Date().toLocaleTimeString('tr-TR'); }
+        function updateDesktopIcons() { desktopIcons.innerHTML = ''; baseApps.forEach(app => { const iconDiv = document.createElement('div'); iconDiv.className = 'desktop-icon'; iconDiv.innerHTML = `<div class="icon-fs">${app.icon}</div> <span>${app.name}</span>`; iconDiv.addEventListener('dblclick', () => { setSystemLoad(0.1); app.action(); }); desktopIcons.appendChild(iconDiv); }); (gameState.ownedGames || []).forEach(gameId => { const game = gameCatalog.find(g => g.id === gameId); if (game) { const iconDiv = document.createElement('div'); iconDiv.className = 'desktop-icon'; iconDiv.innerHTML = `<div class="icon-fs">${game.icon}</div> <span>${game.name}</span>`; iconDiv.addEventListener('dblclick', () => { if ((gameState.hardware.cpu.level || 1) < game.reqCpu || (gameState.hardware.gpu.level || 1) < game.reqGpu) { showNotification("Donanımın bu uygulamayı çalıştırmak için yetersiz!", "error"); } else { setSystemLoad(game.load || 0.5); game.action(); } }); desktopIcons.appendChild(iconDiv); } }); (gameState.desktopItems || []).forEach(item => { const iconDiv = document.createElement('div'); iconDiv.className = 'desktop-icon'; iconDiv.innerHTML = `<div class="icon-fs">${item.icon}</div> <span>${item.name}</span>`; if (item.type === 'file') { iconDiv.addEventListener('dblclick', () => openTextEditor(item.id, item.name)); } desktopIcons.appendChild(iconDiv); }); }
+        function setupStartMenu() { startButton.addEventListener('click', (e) => { e.stopPropagation(); startMenu.classList.toggle('hidden'); }); document.addEventListener('click', () => startMenu.classList.add('hidden')); document.getElementById('start-menu-settings').addEventListener('click', openSettings); document.getElementById('start-menu-store').addEventListener('click', openStore); document.getElementById('start-menu-sahibinden').addEventListener('click', openSahibinden); document.getElementById('start-menu-feedback').addEventListener('click', () => { const mail = "mailto:destek@gubikos.dev?subject=Geri%20Bildirim&body=Uygulama%20hakk%C4%B1nda%20d%C3%BC%C5%9F%C3%BCncelerim..."; const win = window.open(mail, '_blank'); if(!win) showNotification("Pop-up engelleyici aktif olabilir.", "error"); }); document.getElementById('start-menu-about').addEventListener('click', () => { createWindow('win-about', 'Hakkında', '<div class="info-panel"><h3>Gubikos 7</h3><p>Bir İşletim Sistemi Simülasyonu</p><p>Versiyon: 7.2 "İnteraktif Masaüstü"</p></div>'); }); }
+
+        function setupDesktopContextMenu() {
+            desktopBackground.addEventListener('dblclick', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.target === desktopBackground) {
+                    desktopContextMenu.style.top = `${e.clientY}px`;
+                    desktopContextMenu.style.left = `${e.clientX}px`;
+                    desktopContextMenu.classList.remove('hidden');
+                }
+            });
+            document.addEventListener('click', () => desktopContextMenu.classList.add('hidden'));
+            
+            document.getElementById('ctx-display-settings').addEventListener('click', openSettings); // DEĞİŞTİRİLDİ: Artık ana ayarları açıyor
+            document.getElementById('ctx-personalize').addEventListener('click', openPersonalizeSettings);
+            document.getElementById('ctx-new-folder-desktop').addEventListener('click', createDesktopFolder);
+            document.getElementById('ctx-new-file-desktop').addEventListener('click', createDesktopTextFile);
+        }
+        function createDesktopFolder() { desktopItemCount++; const name = `Yeni Klasör (${desktopItemCount})`; gameState.desktopItems.push({ id: `folder-${Date.now()}`, type: 'folder', name: name, icon: '📁' }); saveGameState(); updateDesktopIcons(); }
+        function createDesktopTextFile() { desktopItemCount++; const name = `Metin Belgesi (${desktopItemCount}).txt`; const id = `file-${Date.now()}`; gameState.desktopItems.push({ id: id, type: 'file', name: name, content: '', icon: '📝'}); saveGameState(); updateDesktopIcons(); openTextEditor(id, name); }
+        function openTextEditor(id, name) { const file = (gameState.desktopItems || []).find(f => f.id === id); if (!file) return; createWindow(`win-text-${id}`, name, `<textarea id="text-area-${id}"></textarea>`, { onClose: () => { setSystemLoad(0); }, onOpen: (win) => { const textArea = win.querySelector(`#text-area-${id}`); textArea.value = file.content; textArea.addEventListener('blur', () => { file.content = textArea.value; saveGameState(); }); } }); }
+
+        // --- SİSTEM YÜKÜ VE VİRÜS MANTIĞI ---
+        function setSystemLoad(loadValue) { systemLoad = Math.max(0, Math.min(1, loadValue)); }
+        function checkForRandomCrash() { if(gameState.hasVirus && Math.random() < 0.25) { createBSOD(gameState.virusType); return true; } return false; }
+        function createBSOD(virus = "KERNEL_SECURITY_CHECK_FAILURE") { setSystemLoad(0); Object.keys(openWindows).forEach(id => closeWindow(id, true)); bsod.querySelector('p:last-of-type').textContent = `Daha fazla bilgi için bu hata kodunu aratabilirsiniz: ${virus}`; bsod.classList.remove('hidden'); gubikosDesktop.style.opacity = '0'; setTimeout(() => gubikosDesktop.classList.add('hidden'), 500); setTimeout(restartSystem, 6000); }
+        function restartSystem() { bsod.classList.add('hidden'); gubikosDesktop.style.opacity = '1'; startBootSequence(); }
+        
+        // --- PENCERE YÖNETİMİ ---
+        function createWindow(id, title, contentHTML, options = {}) { if (checkForRandomCrash()) return; if (document.getElementById(id)) { focusWindow(id); return; } showNotification(`${title} açılıyor...`, 'info'); const monitorWidth = screenWrapper.clientWidth; const monitorHeight = screenWrapper.clientHeight; const defaultWidth = parseInt(options.width, 10) || 500; const defaultHeight = parseInt(options.height, 10) || 400; const finalWidth = Math.min(defaultWidth, monitorWidth * 0.9); const finalHeight = Math.min(defaultHeight, monitorHeight * 0.8); setTimeout(() => { const win = document.createElement('div'); win.className = 'window'; win.id = id; win.style.width = `${finalWidth}px`; win.style.height = `${finalHeight}px`; win.style.top = `${Math.min(100, 20 + Object.keys(openWindows).length * 20)}px`; win.style.left = `${Math.min(200, 40 + Object.keys(openWindows).length * 20)}px`; win.style.zIndex = ++highestZIndex; win.innerHTML = `<div class="title-bar"><span class="title">${title}</span><div class="window-controls"><button class="maximize-btn" title="Tam Ekran">□</button><button class="close-btn" title="Kapat">×</button></div></div> <div class="window-content">${contentHTML}</div>`; windowArea.appendChild(win); openWindows[id] = { element: win, gameInterval: null, isMaximized: false, previousState: {}, onClose: options.onClose }; makeDraggable(win.querySelector('.title-bar'), win); win.querySelector('.close-btn').addEventListener('click', () => closeWindow(id)); win.querySelector('.maximize-btn').addEventListener('click', () => toggleMaximize(id)); win.addEventListener('mousedown', () => focusWindow(id)); if (options.onOpen) options.onOpen(win, id); }, calculatePerformanceDelay()); }
+        function toggleMaximize(id) { const winData = openWindows[id]; if (!winData) return; const win = winData.element; const titleBar = win.querySelector('.title-bar'); if (!winData.isMaximized) { winData.previousState = { top: win.style.top, left: win.style.left, width: win.style.width, height: win.style.height }; win.style.transition = 'all 0.2s ease-out'; win.style.top = '0px'; win.style.left = '0px'; win.style.width = '100%'; win.style.height = `calc(100% - 1px)`; win.querySelector('.maximize-btn').textContent = '◱'; winData.isMaximized = true; titleBar.style.cursor = 'default'; } else { win.style.transition = 'all 0.2s ease-out'; win.style.top = winData.previousState.top; win.style.left = winData.previousState.left; win.style.width = winData.previousState.width; win.style.height = winData.previousState.height; win.querySelector('.maximize-btn').textContent = '□'; winData.isMaximized = false; titleBar.style.cursor = 'move'; } setTimeout(() => win.style.transition = '', 200); }
+        function closeWindow(id, silent = false) { if (openWindows[id]) { if (openWindows[id].onClose) openWindows[id].onClose(); if (openWindows[id].gameInterval) { clearInterval(openWindows[id].gameInterval); } openWindows[id].element.remove(); delete openWindows[id]; if (!silent) saveGameState(); } }
+        function focusWindow(id) { if (openWindows[id]) { openWindows[id].element.style.zIndex = ++highestZIndex; } }
+        
+        function makeDraggable(titleBar, win) {
+            let offsetX, offsetY; let lastMoveTime = 0;
+            const onMouseDown = (e) => { if (openWindows[win.id]?.isMaximized || e.target.closest('.window-controls')) return; offsetX = e.clientX - win.offsetLeft; offsetY = e.clientY - win.offsetTop; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); win.style.transition = 'none'; };
+            const onMouseMove = (e) => { e.preventDefault(); const now = Date.now(); if (now - lastMoveTime < getPerformanceFrameTime()) { return; } lastMoveTime = now; win.style.left = `${e.clientX - offsetX}px`; win.style.top = `${e.clientY - offsetY}px`; };
+            const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+            titleBar.addEventListener('mousedown', onMouseDown);
+        }
+
+        function createExternalSiteWindow(id, title, url) { const content = ` <div class="external-site-window"> <p><strong>'${title}'</strong> sitesi güvenlik politikaları nedeniyle doğrudan Gubikos içinde görüntülenemiyor.</p> <p>Siteyi tarayıcınızda açmak için aşağıdaki butonu kullanın.</p> <a href="${url}" target="_blank" class="open-new-tab-btn">Yeni Sekmede Aç</a> </div>`; createWindow(id, `Tarayıcı: ${title}`, content, { width: 500, height: 300, onClose: () => setSystemLoad(0) }); }
+
+        // --- UYGULAMA AÇMA FONKSİYONLARI ---
+        function openPersonalizeSettings() { let wallpaperHtml = wallpapers.map(url => `<div class="wallpaper-thumb" style="background-image: url('${url}')" data-url="${url}"></div>`).join(''); const content = `<h3>Arka Planı Seç</h3><div class="wallpaper-picker">${wallpaperHtml}</div>`; createWindow('win-personalize', 'Kişiselleştir', content, { width: 400, height: 200, onOpen: (win) => { win.querySelectorAll('.wallpaper-thumb').forEach(thumb => { thumb.addEventListener('click', (e) => { gameState.wallpaperUrl = e.target.dataset.url; saveGameState(); applyDisplaySettings(); showNotification('Arka plan değiştirildi!', 'success'); }); }); } }); }
+        
+        // DEĞİŞTİRİLDİ: Ayrı bir fonksiyon olmaktan çıktı, openSettings içine entegre edildi
+        // function openDisplaySettings() { ... }
+
+        function openTerminal() { const logo = `\n   ______      __        __  _              \n  / ____/___  / /_      / /_(_)___  ___     \n / / __/ __ \\/ __ \\    / __/ / __ \\/ _ \\    \n/ /_/ / /_/ / / / /   / /_/ / / / /  __/    \n\\____/\\____/_/ /_/____\\__/_/_/ /_/\\___/     \n               /_____/                     \n`; const content = `<div id="terminal-content" style="background-color:#1e1e1e; color:#ccc; font-family:'Courier New', monospace; flex-grow:1; display:flex; flex-direction:column;"><pre id="terminal-logo" style="color:#39FF14; white-space:pre; margin-bottom:10px;">${logo}</pre><div id="terminal-output" style="flex-grow:1; overflow-y:auto; white-space:pre-wrap; padding:5px;">Gubikos 7 [Versiyon 7.2] - Yardım için 'yardim' yaz.</div><div id="terminal-input-line" style="display:flex;"><span id="terminal-prompt" style="color:#0f0;">Gubikos></span><input type="text" id="terminal-input" autofocus style="background:none; border:none; color:#ccc; flex-grow:1; outline:none; font-family:inherit;"></div></div>`; createWindow('win-terminal', 'GubiTerminal', content, { onClose: () => setSystemLoad(0), onOpen: (win) => { const terminalInput = win.querySelector('#terminal-input'); terminalInput.focus(); terminalInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { handleTerminalCommand(win, terminalInput.value); terminalInput.value = ''; } }); } }); }
+        function openGubiGo() { const content = `<div id="gubigo-container" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"> <div id="gubigo-logo" style="font-family:'Press Start 2P', cursive; font-size:32px; margin-bottom:20px;"><span style="color:#4285F4;">G</span><span style="color:#DB4437;">u</span><span style="color:#F4B400;">b</span><span style="color:#4285F4;">i</span><span style="color:#0F9D58;">G</span><span style="color:#DB4437;">o</span></div> <input id="gubigo-search-bar" type="text" placeholder="GubiGo ile arayın..." style="width:80%; max-width:500px; padding:10px; border:1px solid #ccc; border-radius:20px; font-size:16px;"> <button id="gubigo-search-btn" style="margin-top:20px; padding:10px 20px; border:none; background-color:#f2f2f2; cursor:pointer;">Ara</button> <p id="gubigo-feedback" style="margin-top:15px; color:#555;"></p></div>`; createWindow('win-gubigo', 'GubiGo', content, { onClose: () => setSystemLoad(0), onOpen: (win) => { const searchBtn = win.querySelector('#gubigo-search-btn'); const searchBar = win.querySelector('#gubigo-search-bar'); const feedback = win.querySelector('#gubigo-feedback'); const handleSearch = () => { const query = searchBar.value.toLowerCase().trim(); if (!query) return; feedback.textContent = ''; switch (query) { case 'youtube': createWindow('win-browser-youtube', 'YouTube', '<iframe src="https://www.youtube.com/embed/5qap5aO4i9A?autoplay=1&mute=1" allow="autoplay" allowfullscreen></iframe>', { width: 800, height: 600 }); break; case 'gubik games': createExternalSiteWindow('win-ext-gubikgames', 'Gubik Games', 'https://sites.google.com/view/gubikgames/ana-sayfa'); break; case 'html': createExternalSiteWindow('win-ext-html', 'HTML Düzenleyici', 'https://playcode.io/2483900'); break; default: feedback.textContent = `'${query}' için özel bir GubiGo sonucu bulunamadı.`; break; } }; searchBtn.addEventListener('click', handleSearch); searchBar.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSearch(); }); } }); }
+        function openBank() { createWindow('win-bank', 'Banka', `<div class="info-panel"><h3>Banka Hesabı</h3><p>Mevcut Bakiye:</p><h2 id="bank-balance">G$ ${gameState.money.toFixed(2)}</h2></div>`, { onClose: () => setSystemLoad(0), onOpen: (win) => { if(openWindows['win-bank']) { win.querySelector('#bank-balance').textContent = `G$ ${gameState.money.toFixed(2)}`; } } }); }
+        
+        // ==============================================================================
+        // YENİ VE GÜNCELLENMİŞ AYARLAR PENCERESİ
+        // ==============================================================================
+        function openSettings() {
+            // --- Donanım Bilgilerini Topla ---
+            const {cpu, ram, gpu, fan, monitor} = gameState.hardware;
+            const {resolution, hz} = gameState.display;
+            const cpuInfo = cpuCatalog.find(i => i.level === cpu.level) || { name: '?' };
+            const gpuInfo = gpuCatalog.find(i => i.level === gpu.level) || { name: '?' };
+            const ramInfo = ramCatalog.find(i => i.level === ram.level) || { name: '?' };
+            const fanInfo = fanCatalog.find(i => i.level === fan.level) || { name: '?' };
+            const monInfo = monitorCatalog.find(m => m.level === monitor.level) || { name: '?'};
+            const { totalSsd, usedSsd } = getSsdStats();
+            
+            // --- Görüntü Ayarları Seçeneklerini Oluştur ---
+            const mon = monitorCatalog.find(m => m.level === gameState.hardware.monitor.level) || monitorCatalog[0];
+            const [maxResStr, maxHzStr] = mon.desc.split(', ');
+            const [maxW, maxH] = maxResStr.split('x').map(Number);
+            const maxHz = parseInt(maxHzStr, 10);
+            const availableResolutions = allResolutions.filter(res => { const [w, h] = res.split('x').map(Number); return w <= maxW && h <= maxH; });
+            const availableHz = allHz.filter(hz_val => hz_val <= maxHz);
+            const resOptions = availableResolutions.map(r => `<option value="${r}" ${r === gameState.display.resolution ? 'selected' : ''}>${r}</option>`).join('');
+            const hzOptions = availableHz.map(h => `<option value="${h}" ${h === gameState.display.hz ? 'selected' : ''}>${h} Hz</option>`).join('');
+
+            // --- Pencere İçeriğini Oluştur ---
+            const content = `
+                <div class="info-panel">
+                    <h3>Sistem Bilgisi</h3>
+                    <ul id="hardware-list">
+                        <li>İS: ${gameState.os} ${gameState.hasVirus ? `<span class="status-fake">(${gameState.virusType} Bulaşmış!)</span>` : ''}</li>
+                        <li>CPU: Seviye ${cpu.level} (${cpuInfo.name}) ${cpu.isFake ? '<span class="status-fake">(SAHTE)</span>' : ''}</li>
+                        <li>RAM: Seviye ${ram.level} (${ramInfo.name}) ${ram.isFake ? '<span class="status-fake">(SAHTE)</span>' : ''}</li>
+                        <li>GPU: Seviye ${gpu.level} (${gpuInfo.name}) ${gpu.isFake ? '<span class="status-fake">(SAHTE)</span>' : ''}</li>
+                        <li>SOĞUTUCU: Seviye ${fan.level} (${fanInfo.name})</li>
+                        <li>MONİTÖR: Seviye ${monitor.level} (${monInfo.name}) ${gameState.screenIsBroken ? '<span class="status-fake">(HASARLI)</span>' : ''}</li>
+                        <li>SSD: ${usedSsd.toFixed(1)}MB / ${totalSsd.toFixed(1)}MB</li>
+                        <li>KORUMA: ${gameState.ownedGames.includes('antivirus') ? '<span class="status-ok">GubiAntivirus Yüklü</span>' : '<span class="status-fake">Koruma Yüklü Değil!</span>'}</li>
+                    </ul>
+                </div>
+                <hr style="margin: 15px 0;">
+                <div class="info-panel">
+                    <h3>Görüntü Ayarları</h3>
+                    <div class="settings-grid">
+                        <label for="resolution-select">Çözünürlük:</label> 
+                        <select id="resolution-select">${resOptions}</select> 
+                        
+                        <label for="hz-select">Yenileme Hızı:</label> 
+                        <select id="hz-select">${hzOptions}</select> 
+                        
+                        <div></div> 
+                        <button id="apply-display-settings">Uygula</button> 
+                    </div>
+                </div>
+            `; 
+            
+            // --- Pencereyi Oluştur ---
+            createWindow('win-settings', 'Ayarlar', content, {
+                width: 500, height: 550, // Yüksekliği artırarak kaydırma çubuğu için yer açıldı
+                onClose: () => setSystemLoad(0),
+                onOpen: (win) => {
+                    // "Uygula" butonuna tıklama olayını ekle
+                    win.querySelector('#apply-display-settings').addEventListener('click', () => {
+                        const newRes = win.querySelector('#resolution-select').value;
+                        const newHz = parseInt(win.querySelector('#hz-select').value, 10);
+                        gameState.display = { resolution: newRes, hz: newHz };
+                        saveGameState();
+                        applyDisplaySettings();
+                        showNotification(`Ayarlar güncellendi: ${newRes} @ ${newHz}Hz`, 'success');
+                        // Pencereyi kapatıp yeniden açarak güncel bilgileri göster
+                        closeWindow('win-settings');
+                        openSettings();
+                    });
+                }
+            });
+        }
+        
+        function openStore() { let gamesHTML = gameCatalog.map(game => ` <div class="store-item"> <h4>${game.name}</h4><p>${game.desc}</p><p class="price" style="font-size:11px;">Gereksinim: C${game.reqCpu}/G${game.reqGpu} | Boyut: ${game.size}MB</p> ${gameState.ownedGames.includes(game.id) ? '<span class="owned">KÜTÜPHANEDE</span>' : `<button data-buy-game-id="${game.id}" ${gameState.money < game.price ? 'disabled' : ''}>${game.price > 0 ? `G$ ${game.price}` : 'ÜCRETSİZ'}</button>`} </div>`).join(''); const content = `<h3>Uygulamalar & Oyunlar</h3><div class="store-grid">${gamesHTML}</div>`; createWindow('win-store', 'PlayStore', content, { width: '700px', height: '500px', onClose: () => setSystemLoad(0), onOpen: (win) => { win.querySelectorAll('button[data-buy-game-id]').forEach(btn => btn.addEventListener('click', (e) => buyGame(e.target.dataset.buyGameId))); } }); }
+        function openSahibinden() { const allHardware = [...cpuCatalog, ...gpuCatalog, ...ramCatalog, ...fanCatalog, ...ssdCatalog, ...monitorCatalog]; let itemsHTML = allHardware.sort((a,b) => a.price - b.price).map(item => { if (item.price === 0) return ''; const currentLevel = gameState.hardware[item.type]?.level || 0; return ` <div class="store-item"> <pre>${item.image || ' '}</pre> <h4>${item.name}</h4><p>${item.desc || `Kapasite: ${item.capacity}MB`}</p><p class="price">G$ ${item.price}</p> ${currentLevel >= item.level ? '<span class="owned">SAHİP</span>' : `<button data-item-id="${item.id}" ${gameState.money < item.price ? 'disabled' : ''}>Satın Al</button>`} </div>`}).join(''); const content = `<h3>İkinci El Donanım Pazarı</h3><p style="font-size:12px; text-align:center; color: #e74c3c;">Uyarı: Bazı ürünler sahte veya beklenenden daha düşük performanslı çıkabilir.</p><div class="store-grid">${itemsHTML}</div>`; createWindow('win-sahibinden', 'Sahibinden', content, { width: '800px', height: '600px', onClose: () => setSystemLoad(0), onOpen: (win) => { win.querySelectorAll('button[data-item-id]').forEach(btn => btn.addEventListener('click', (e) => buyHardware(e.target.dataset.itemId))); } }); }
+
+        // --- SATIN ALMA, İNDİRME VE OYUN MANTIKLARI ---
+        function buyHardware(itemId) { const allItems = [...cpuCatalog, ...gpuCatalog, ...ramCatalog, ...fanCatalog, ...monitorCatalog, ...ssdCatalog]; const item = allItems.find(i => i.id === itemId); if (item && gameState.money >= item.price && (gameState.hardware[item.type]?.level || 0) < item.level) { gameState.money -= item.price; const isFake = Math.random() < (item.fakeChance || 0); gameState.hardware[item.type] = { level: item.level, isFake: isFake }; if (isFake) { showNotification(`${item.name} sahte çıktı! Düşük performans gösterebilir.`, 'error'); } else { showNotification(`${item.name} başarıyla satın alındı ve takıldı!`, 'success'); } if (item.type === 'monitor') { const mon = monitorCatalog.find(m => m.level === item.level); const [res, hz] = mon.desc.split(', '); gameState.display = { resolution: res, hz: parseInt(hz, 10) }; applyDisplaySettings(); } saveGameState(); closeWindow('win-sahibinden', true); openSahibinden(); if(document.getElementById('win-settings')) { closeWindow('win-settings', true); openSettings(); } } else { showNotification('Yetersiz bakiye veya zaten daha iyi bir parçaya sahipsin.', 'error'); } }
+        function startDownload(game) { if (isDownloading) { showNotification("Aynı anda sadece bir dosya indirilebilir.", "error"); return; } isDownloading = true; downloadManager.classList.remove('hidden'); downloadItemName.textContent = `${game.name} indiriliyor...`; let progress = 0; const downloadSpeed = (1 / (gameState.hardware.cpu.level || 1)) * 5 * getPerformanceBoost(); const downloadInterval = setInterval(() => { progress += downloadSpeed; const percentage = Math.min(100, (progress / game.size) * 100); downloadProgress.style.width = `${percentage}%`; downloadProgress.textContent = `${Math.floor(percentage)}%`; if (percentage >= 100) { clearInterval(downloadInterval); gameState.ownedGames.push(game.id); if(game.virus) { gameState.hasVirus = true; gameState.virusType = game.virus; } saveGameState(); showNotification(`${game.name} başarıyla yüklendi!`, 'success'); updateDesktopIcons(); isDownloading = false; setTimeout(() => downloadManager.classList.add('hidden'), 2000); if(document.getElementById('win-store')) { closeWindow('win-store', true); openStore(); } if(document.getElementById('win-settings')) { closeWindow('win-settings', true); openSettings(); } } }, 100); }
+        function buyGame(gameId) { const game = gameCatalog.find(g => g.id === gameId); if (!game || gameState.money < game.price) { showNotification('Yetersiz bakiye!', 'error'); return; } const { totalSsd, usedSsd } = getSsdStats(); if (game.size > (totalSsd - usedSsd)) { showNotification(`Yeterli depolama alanı yok! Gerekli: ${game.size}MB`, 'error'); return; } gameState.money -= game.price; saveGameState(); if(document.getElementById('win-bank')) { closeWindow('win-bank', true); openBank(); } startDownload(game); }
+        function launchValorant() { createWindow('win-valorant-installer', 'Valorant Yükleyici', '<p>Valorant Mobile yükleniyor... Lütfen bekleyin.</p><div class="progress-bar"><div id="v-install-progress" class="progress-bar-inner" style="width:0%; background-color:#e81123;">0%</div></div>', { onClose: () => setSystemLoad(0), onOpen: (win) => { let progress = 0; const installer = setInterval(() => { progress += 5; win.querySelector('#v-install-progress').style.width = progress + '%'; if (progress >= 75) { clearInterval(installer); closeWindow('win-valorant-installer'); const errorBox = document.createElement('div'); errorBox.className = 'error-message-box'; errorBox.innerHTML = `<h3>Uygulama Hatası</h3><p>Uygulama düzgün olarak başlatılamadı (0xc000007b).</p>`; gubikosDesktop.appendChild(errorBox); setTimeout(() => { gubikosDesktop.removeChild(errorBox); setTimeout(() => createBSOD(gameState.virusType), 500); }, 3000); } }, 200); } }); }
+        function runAntiVirus() { createWindow('win-antivirus', 'GubiAntivirus', '<div class="info-panel"><p>Sistem taranıyor...</p><p id="av-status"></p></div>', { onClose: () => setSystemLoad(0), onOpen: (win) => { const status = win.querySelector('#av-status'); setTimeout(() => { if (gameState.hasVirus) { status.innerHTML = `<strong style="color:red">TEHDİT BULUNDU: ${gameState.virusType}</strong><br>Virüs başarıyla temizlendi!`; gameState.hasVirus = false; gameState.virusType = 'None'; saveGameState(); showNotification("Virüs temizlendi! Sistem normale döndü.", "success"); if(document.getElementById('win-settings')) { closeWindow('win-settings', true); openSettings(); } } else { status.textContent = 'Sisteminiz temiz. Hiçbir tehdit bulunamadı.'; } }, 3000 / getPerformanceBoost()); } }); }
+
+        function openCpuZ() {
+            const id = 'win-cpuz';
+            const content = `<div id="cpu-z-content"></div>`;
+            createWindow(id, 'CPU-Z', content, {
+                width: 450, height: 500,
+                onClose: () => setSystemLoad(0),
+                onOpen: (win, winId) => {
+                    const updateCpuZ = () => {
+                        if (!openWindows[winId]) return;
+                        const { cpu, ram, gpu, fan } = gameState.hardware;
+                        const cpuInfo = cpuCatalog.find(c => c.level === cpu.level) || {};
+                        const ramInfo = ramCatalog.find(r => r.level === ram.level) || {};
+                        const gpuInfo = gpuCatalog.find(g => g.level === gpu.level) || {};
+                        const fanInfo = fanCatalog.find(f => f.level === fan.level) || {};
+                        
+                        const tempFluctuation = (Math.random() * 3) - 1.5;
+                        const baseTemp = 25;
+                        const cpuTemp = baseTemp + (systemLoad * 70) - (fan.level * 5) + tempFluctuation;
+                        const gpuTemp = baseTemp + (systemLoad * 60) - (fan.level * 3) + tempFluctuation;
+
+                        const winContent = win.querySelector('#cpu-z-content');
+                        winContent.innerHTML = `
+                            <div class="info-panel"> <h3>CPU</h3> <div class="cpu-z-grid"> <span><strong>Model:</strong> ${cpuInfo.name}</span> <span><strong>Durum:</strong> ${cpu.isFake ? '<span class="status-fake">SAHTE</span>' : '<span class="status-ok">ORİJİNAL</span>'}</span> <span><strong>Marka:</strong> ${cpuInfo.brand}</span> <span><strong>Sıcaklık:</strong> ${cpuTemp.toFixed(1)}°C</span> </div> </div>
+                            <div class="info-panel"> <h3>Graphics</h3> <div class="cpu-z-grid"> <span><strong>Model:</strong> ${gpuInfo.name}</span> <span><strong>Durum:</strong> ${gpu.isFake ? '<span class="status-fake">SAHTE</span>' : '<span class="status-ok">ORİJİNAL</span>'}</span> <span><strong>Güç Derecesi:</strong> ${gpuInfo.power} GFlops</span> <span><strong>Sıcaklık:</strong> ${gpuTemp.toFixed(1)}°C</span> </div> </div>
+                            <div class="info-panel"> <h3>Memory (RAM)</h3> <div class="cpu-z-grid"> <span><strong>Model:</strong> ${ramInfo.name}</span> <span><strong>Durum:</strong> ${ram.isFake ? '<span class="status-fake">SAHTE</span>' : '<span class="status-ok">ORİJİNAL</span>'}</span> <span><strong>Hız:</strong> ${ramInfo.mhz} MHz</span> <span><strong>Marka:</strong> ${ramInfo.brand}</span> </div> </div>
+                            <div class="info-panel"> <h3>Soğutma</h3> <p>${fanInfo.name}</p> </div>
+                        `;
+                    };
+                    openWindows[winId].gameInterval = setInterval(updateCpuZ, 1000 + getPerformanceFrameTime());
+                    updateCpuZ();
+                }
+            });
+        }
+        function openDarkWeb() { let itemsHTML = darkWebCatalog.map(item => ` <div class="store-item" style="background-color: #333; color: white; border-color: #555;"> <h4>${item.name}</h4><p style="color:#ccc;">${item.desc}</p><p class="price" style="color:#e74c3c;">G$ ${item.price}</p> <button data-dark-item-id="${item.id}" style="background-color:#e74c3c;" ${gameState.money < item.price ? 'disabled' : ''}>Satın Al</button> </div>`).join(''); const content = `<h3 style="color:#e74c3c; text-align:center;">D.W.M.</h3><p style="color:#aaa; font-size:12px; text-align:center;">Dark Web Market. Tüm işlemler geri alınamaz.</p><div class="store-grid">${itemsHTML}</div>`; createWindow('win-darkweb', 'Dark Web', content, { width: '500px', onClose: () => setSystemLoad(0), onOpen: (win) => { win.querySelectorAll('button[data-dark-item-id]').forEach(btn => btn.addEventListener('click', (e) => buyDarkWebItem(e.target.dataset.darkItemId))); } }); }
+        function buyDarkWebItem(itemId) { const item = darkWebCatalog.find(i => i.id === itemId); if (!item || gameState.money < item.price) { showNotification("Yetersiz bakiye.", "error"); return; } gameState.money -= item.price; closeWindow('win-darkweb', true); switch(item.effect) { case 'add_money': gameState.money += item.value; gameState.hasVirus = true; gameState.virusType = item.virus; showNotification("Paket sisteme enjekte edildi...", "error"); saveGameState(); openDarkWeb(); break; case 'bsod': createBSOD('DARK_WEB_ATTACK'); break; case 'screen_break': applyScreenDamage(); showNotification("Ekran sürücülerine kalıcı hasar verildi!", "error"); break; case 'format': createWindow('win-format-confirm', 'DİKKAT', '<div class="info-panel" style="text-align:center;"><h3 style="color:red;">EMİN MİSİN?</h3><p>Bu işlem tüm Gubikos verilerini silecek ve sistemi yeniden başlatacak. Bu işlem geri alınamaz.</p><button id="confirm-format-btn" style="background-color:#e74c3c; color:white; padding:10px; border:none; cursor:pointer;">EVET, HER ŞEYİ SİL</button></div>', { width: 400, height: 250, onOpen: (win) => { win.querySelector('#confirm-format-btn').onclick = () => { localStorage.removeItem('gubikosGameState'); window.location.reload(); }; } }); break; } if(document.getElementById('win-bank')) { closeWindow('win-bank', true); openBank(); } }
+        function openGubiSphere3D() { const content = `<div style="width:100%; height:100%; background:black; display:flex; justify-content:center; align-items:center; overflow:hidden;"><div id="sphere" style="width:100px; height:100px; background:radial-gradient(circle, #f0f, #0ff, #ff0); border-radius:50%; animation: spin 5s linear infinite, color-shift 10s linear infinite;"></div></div> <style> @keyframes spin { from {transform: rotate(0deg);} to {transform: rotate(360deg);} } @keyframes color-shift { 0% {filter: hue-rotate(0deg);} 100% {filter: hue-rotate(360deg);} } </style>`; createWindow('win-gubisphere', 'GubiSphere 3D', content, { onClose: () => setSystemLoad(0) }); }
+        function openClickerGame() { let score = 0; const content = `<div class="info-panel"><h4>Skor: <span id="clicker-score">0</span></h4></div><div id="clicker-game-area"><div id="clicker-target"></div></div>`; createWindow('win-clicker', 'Nokta Avcısı', content, { onClose: () => setSystemLoad(0), onOpen: (win, id) => { const target = win.querySelector('#clicker-target'); const area = win.querySelector('#clicker-game-area'); const scoreEl = win.querySelector('#clicker-score'); const moveTarget = () => { if(!openWindows[id]) return; target.style.top = `${Math.random() * (area.clientHeight - 50)}px`; target.style.left = `${Math.random() * (area.clientWidth - 50)}px`; }; target.addEventListener('click', () => { score++; scoreEl.textContent = score; if (score % 10 === 0) { const reward = 5 + ((gameState.hardware.cpu.level || 1) * 2); gameState.money += reward; saveGameState(); showNotification(`10 isabet! G$ ${reward.toFixed(2)} kazandın!`, 'success'); } }); const gameInterval = setInterval(moveTarget, getPerformanceFrameTime() * 20); openWindows[id].gameInterval = gameInterval; } }); }
+        function openGuessGame() { let numberToGuess = Math.floor(Math.random() * 100) + 1; let guesses = 10; const content = `<div class="info-panel"> <h3>Sayıyı Tahmin Et (1-100)</h3> <p>Kalan Hakkın: <span id="guess-tries">${guesses}</span></p> <input type="number" id="guess-input" style="width: 95%; padding: 5px;"> <button id="guess-button" style="width: 100%; margin-top: 10px; padding: 5px;">Tahmin Et</button> <p id="guess-feedback"></p> </div>`; createWindow('win-guess', 'Sayı Tahmin', content, { onClose: () => setSystemLoad(0), onOpen: (win) => { const input = win.querySelector('#guess-input'); const button = win.querySelector('#guess-button'); const feedback = win.querySelector('#guess-feedback'); const triesEl = win.querySelector('#guess-tries'); button.addEventListener('click', () => { const guess = parseInt(input.value, 10); if (isNaN(guess)) return; guesses--; triesEl.textContent = guesses; if (guess === numberToGuess) { const reward = 25 * (gameState.hardware.cpu.level || 1); feedback.textContent = `Tebrikler! Doğru tahmin! G$ ${reward.toFixed(2)} kazandın!`; gameState.money += reward; saveGameState(); button.disabled = true; } else if (guesses <= 0) { feedback.textContent = `Kaybettin! Doğru sayı ${numberToGuess} idi.`; button.disabled = true; } else { feedback.textContent = guess > numberToGuess ? 'Daha küçük bir sayı dene.' : 'Daha büyük bir sayı dene.'; } }); } }); }
+        function openTyperGame() { const content = `<div class="info-panel"> <h3>Hızlı Parmaklar</h3> <p>Süre dolmadan kelimeyi doğru yaz!</p> <div id="typer-word-display">Başlatılıyor...</div> <input type="text" id="typer-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"> <div id="typer-timer">Süre: 10.0</div> <p>Skor: <span id="typer-score">0</span></p> </div>`; createWindow('win-typer', 'Hızlı Parmaklar', content, { onClose: () => setSystemLoad(0), onOpen: (win, id) => { const wordList = ["merhaba", "bilgisayar", "internet", "programlama", "javascript", "klavye", "monitör", "işlemci", "yazılım", "donanım"]; const display = win.querySelector('#typer-word-display'); const input = win.querySelector('#typer-input'); const timerEl = win.querySelector('#typer-timer'); const scoreEl = win.querySelector('#typer-score'); let score = 0, time, currentWord, gameInterval, lastTickTime = Date.now(); const gameOver = (message) => { clearInterval(gameInterval); display.textContent = message; input.disabled = true; }; const newRound = () => { input.value = ''; input.focus(); currentWord = wordList[Math.floor(Math.random() * wordList.length)]; display.textContent = currentWord; time = 10; lastTickTime = Date.now(); }; const tick = () => { if(!openWindows[id]) { clearInterval(gameInterval); return; }; const now = Date.now(); const delta = (now - lastTickTime) / 1000; lastTickTime = now; time -= delta; timerEl.textContent = `Süre: ${Math.max(0, time).toFixed(1)}`; if (time <= 0) { gameOver("Süre Doldu!"); } }; input.addEventListener('input', () => { if (input.value === currentWord) { score++; const reward = 10 + ((gameState.hardware.cpu.level || 1) * 2); gameState.money += reward; showNotification(`Doğru! +G$${reward.toFixed(2)}`, 'success'); scoreEl.textContent = score; saveGameState(); newRound(); } }); newRound(); gameInterval = setInterval(tick, getPerformanceFrameTime()); openWindows[id].gameInterval = gameInterval; } }); }
+        
+        // --- TERMINAL KOMUTLARI ---
+        function handleTerminalCommand(win, command) { const output = win.querySelector('#terminal-output'); output.innerHTML += `\n<span style="color:#0f0;">Gubikos></span> ${command}`; const [cmd, ...args] = command.toLowerCase().split(' '); let response = ''; if (command === '/premium') { gameState.money = 999999; gameState.hardware = { cpu: { level: 9, isFake: false }, ram: { level: 4, isFake: false }, gpu: { level: 9, isFake: false }, monitor: { level: 5, isFake: false }, ssd: { level: 5, isFake: false }, fan: { level: 4, isFake: false } }; const mon = monitorCatalog.find(m => m.level === 5); const [res, hz] = mon.desc.split(', '); gameState.display = {resolution: res, hz: parseInt(hz, 10)}; gameCatalog.forEach(game => { if (!gameState.ownedGames.includes(game.id)) { gameState.ownedGames.push(game.id); } }); saveGameState(); applyDisplaySettings(); updateDesktopIcons(); response = "\n[SİSTEM] Premium mod etkinleştirildi. Pencereleri yeniden açarak değişiklikleri görebilirsin."; } else { switch(cmd) { case 'yardim': response = "\nKullanılabilir komutlar: yardim, tarih, temizle, sistem, banka, formatla"; break; case 'tarih': response = `\n${new Date().toLocaleString('tr-TR')}`; break; case 'temizle': output.innerHTML = "Gubikos 7 Terminal"; return; case 'sistem': const cpuInfo = cpuCatalog.find(i => i.level === gameState.hardware.cpu.level) || { name: '?' }; response = `\nSistem Bilgileri:\n----------------\nCPU: ${cpuInfo.name} ${gameState.hardware.cpu.isFake ? '(SAHTE)' : ''}\nDURUM: ${gameState.hasVirus ? `Virüs Bulaşmış! (${gameState.virusType})` : 'Temiz'}\nEKRAN: ${gameState.screenIsBroken ? 'HASARLI' : 'Normal'}`; break; case 'banka': response = `\nBakiye: G$ ${gameState.money.toFixed(2)}`; break; case 'formatla': response = "\nTÜM VERİLER SİLİNECEK! Emin misin? (evet/hayir)"; output.innerHTML += response; output.scrollTop = output.scrollHeight; const formatHandler = (e) => { if(e.key === 'Enter') { const confirmInput = win.querySelector('#terminal-input'); if(confirmInput.value.toLowerCase() === 'evet') { localStorage.removeItem('gubikosGameState'); window.location.reload(); } else { output.innerHTML += "\nİşlem iptal edildi."; } confirmInput.value=''; win.querySelector('#terminal-input').removeEventListener('keydown', formatHandler); } }; win.querySelector('#terminal-input').addEventListener('keydown', formatHandler); return; default: if (command.trim()!=='') response = `\nHATA: '${command}' komutu tanınmıyor.`; break; } } output.innerHTML += response; output.scrollTop = output.scrollHeight; }
+
+        // --- BAŞLANGIÇ SEKANSI ---
+        function startBootSequence() {
+            bootLog.innerHTML = 'Gubikos 7 Önyükleyici v7.2 başlatılıyor...';
+            bootScreen.classList.remove('hidden');
+            gubikosDesktop.classList.add('hidden');
+            const ramInfo = ramCatalog.find(r => r.level === (gameState.hardware.ram.level || 1)) || { name: '?' };
+            let bootMessages = [ `Donanım kontrolü... (RAM: ${ramInfo.name})`, `Sistem bütünlüğü kontrol ediliyor... ${gameState.hasVirus ? `<span style="color:red;">[HATA] ${gameState.virusType}</span>` : '[OK]'}`, "[OK] CPU, GPU, SSD, GubiFS", "Kristal Arayüz (Crystal UI) başlatılıyor...", ];
+            if (gameState.screenIsBroken) { bootMessages.splice(2, 0, `Ekran sürücüsü kontrolü... <span style="color:yellow;">[UYARI] Kalıcı hasar algılandı!</span>`); }
+            let i = 0;
+            const bootInterval = setInterval(() => { if (i < bootMessages.length) { bootLog.innerHTML += `\n${bootMessages[i]}`; i++; } else { clearInterval(bootInterval); setTimeout(startDesktop, calculatePerformanceDelay()); } }, 550);
+        }
+        function startDesktop() {
+            bootScreen.classList.add('hidden');
+            gubikosDesktop.classList.remove('hidden');
+            setInterval(updateClock, 1000);
+            setupStartMenu();
+            setupDesktopContextMenu();
+            updateDesktopIcons();
+            applyDisplaySettings();
+            if (gameState.screenIsBroken) { applyScreenDamage(); }
+            window.addEventListener('resize', applyDisplaySettings);
+        }
+
+        // --- ANA ÇALIŞTIRMA ---
+        initializeGameState();
+        startBootSequence();
+    });
+    </script>
+</body>
+</html>

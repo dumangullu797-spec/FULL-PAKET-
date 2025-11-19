@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUBIK KUŞU - GUBIK PASS</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; cursor: pointer; }
+        #promo-container {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: rgba(10, 20, 40, 0.9); padding: 30px; border-radius: 15px;
+            border: 2px solid #00ffff; display: none; flex-direction: column; gap: 15px; z-index: 100;
+        }
+        #promo-container input, #promo-container button {
+            font-size: 24px; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #00ffff;
+            background-color: #1a1a1a; color: #00ffff;
+        }
+        #promo-container button { cursor: pointer; background-color: #00ffff; color: black; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="promo-container">
+        <input type="text" id="promo-input" placeholder="Promo Kodunu Girin...">
+        <button id="promo-submit">Kullan</button>
+        <button id="promo-close">Kapat</button>
+    </div>
+    <script>
+        // ====== OYUN KURULUMU ======
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let WIDTH = canvas.width;
+        let HEIGHT = canvas.height;
+
+        // ====== RENKLER (LED/Neon Palet) ======
+        const WHITE = "#FFFFFF"; const YELLOW = "#FFD700"; const GREEN = "#39FF14"; const LIME = "#ADFF2F";
+        const DARK_GREEN = "#008000"; const GRAY = "#808080"; const BLACK = "#000000"; const CYAN = "#00FFFF";
+        const BLUE = "#001f3f"; const RED = "#FF4500"; const PURPLE = "#DA70D6"; const PINK = "#FF69B4";
+        const TURQUOISE = "#00FFFF"; const ORANGE = "#FFA500"; const MODERN_BLUE = "#00BFFF"; const MAGENTA = "#FF00FF";
+        const MODERN_GRAY = "#1a1a1a"; const LED_GLOW = "#00ffff"; const GOLD = "#FFD700";
+
+        // ====== OYUN DEĞİŞKENLERİ ======
+        let score = 0; let max_score = 0; let coin_score = 500;
+        let selected_skin = "Sarı"; let inventory = ["Sarı"];
+        let gameState = "main_menu";
+        let selected_aura = null; let auras_inventory = [];
+        
+        let marketScrollY = 0; let marketContentHeight = 3000;
+
+        let diamond_score = 0;
+        let xp_score = 0;
+        let isGubikPassActive = false;
+        let gubikPassScrollX = 0;
+        let pipe_pass_counter = 0;
+        let claimed_rewards = [];
+        
+        // DEĞİŞTİRİLEN SATIR: Kuşun süzülmesi azaltıldı (daha hızlı düşüş)
+        const gravity = 0.21; // Önceki: 0.12
+        const jump_strength = -6; // Önceki: -5
+
+        let powerups = { shield: 0, coin_doubler: 0, super_shield: 0, sonic_blast: 0, super_sonic_blast: 0 };
+        let isShieldActive = false; let shieldEndTime = 0;
+        let isSuperShieldActive = false; let superShieldEndTime = 0;
+        let isSonicBlastActive = false; let sonicBlastEndTime = 0;
+        let isSuperSonicActive = false; let superSonicPipesLeft = 0;
+        let coinMultiplier = 1; let diamondMultiplier = 1;
+
+        const pipe_speed = 3; const pipe_gap = 180; const pipe_width = 100; let pipes = [];
+        let bird = { x: WIDTH / 5, y: HEIGHT / 2, radius: 20, velocity: 0 }; let clouds = [];
+        let graphics_mode = "Orta"; let frame_rate = 60; let fpsInterval, now, then, elapsed;
+
+        let start_button, settings_button, market_button, inventory_button, promo_button, gubik_pass_button;
+        let hoveredButton = null;
+
+        function updateButtonLayout() {
+            let btnWidth = 350; let btnHeight = 65; let spacing = 15; let baseY = HEIGHT / 2 - 160;
+            start_button     = { x: WIDTH / 2 - btnWidth/2, y: baseY, width: btnWidth, height: btnHeight, text: "BAŞLA" };
+            market_button    = { x: WIDTH / 2 - btnWidth/2, y: baseY + btnHeight + spacing, width: btnWidth, height: btnHeight, text: "DÜKKAN" };
+            inventory_button = { x: WIDTH / 2 - btnWidth/2, y: baseY + 2 * (btnHeight + spacing), width: btnWidth, height: btnHeight, text: "ENVANTER"};
+            gubik_pass_button= { x: WIDTH / 2 - btnWidth/2, y: baseY + 3 * (btnHeight + spacing), width: btnWidth, height: btnHeight, text: "GUBIK PASS" };
+            settings_button  = { x: WIDTH / 2 - btnWidth/2, y: baseY + 4 * (btnHeight + spacing), width: btnWidth, height: btnHeight, text: "AYARLAR" };
+            promo_button     = { x: WIDTH / 2 - btnWidth/2, y: baseY + 5 * (btnHeight + spacing), width: btnWidth, height: btnHeight, text: "PROMO KODU"};
+        }
+
+        // ====== YARDIMCI FONKSİYONLAR ======
+        function initializePipes() { pipes = []; for (let i = 0; i < 5; i++) { let x_pos = i * 350 + WIDTH; let top_height = Math.floor(Math.random() * (HEIGHT/2 - 50)) + 50; pipes.push({ x: x_pos, top: top_height, bottom: HEIGHT - (top_height + pipe_gap), passed: false }); } }
+        function initializeClouds() { clouds = []; for (let i = 0; i < 10; i++) { clouds.push({ x: Math.random() * WIDTH, y: Math.random() * (HEIGHT / 2) }); } }
+        
+        function resetGame() {
+            score = 0; bird.y = HEIGHT / 2; bird.velocity = 0; bird.x = WIDTH / 5;
+            isShieldActive = false; isSuperShieldActive = false; isSonicBlastActive = false; isSuperSonicActive = false;
+            coinMultiplier = powerups.coin_doubler > 0 ? 2 : 1;
+            diamondMultiplier = 1;
+            if (powerups.coin_doubler > 0) { powerups.coin_doubler--; }
+            initializePipes();
+        }
+        function isMouseOver(rect, mousePos) { if (!mousePos || !rect) return false; return mousePos.x > rect.x && mousePos.x < rect.x + rect.width && mousePos.y > rect.y && mousePos.y < rect.y + rect.height; }
+        function isMouseOverCircle(circle, mousePos) { if (!mousePos || !circle) return false; const dx = mousePos.x - circle.x; const dy = mousePos.y - circle.y; return dx * dx + dy * dy <= circle.radius * circle.radius; }
+
+        // ====== ÇİZİM FONKSİYONLARI ======
+        function drawText(text, x, y, color, size = "50px", align = "center") { ctx.fillStyle = color; ctx.font = `bold ${size} 'Courier New', monospace`; ctx.textAlign = align; ctx.shadowColor = color; ctx.shadowBlur = 15; ctx.fillText(text, x, y); ctx.shadowBlur = 0; }
+        function drawModernButton(btn, baseColor, hoverColor, textColor) { let color = (btn === hoveredButton) ? hoverColor : baseColor; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 20; ctx.beginPath(); ctx.roundRect(btn.x, btn.y, btn.width, btn.height, [15]); ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 2; ctx.stroke(); drawText(btn.text, btn.x + btn.width / 2, btn.y + btn.height / 2 + 15, textColor, "35px"); }
+        function drawPipe(pipe) { ctx.fillStyle = DARK_GREEN; let pipeTop = {x: pipe.x, y: 0, width: pipe_width, height: pipe.top}; let pipeBottom = {x: pipe.x, y: HEIGHT - pipe.bottom, width: pipe_width, height: pipe.bottom}; if (graphics_mode === 'Düşük') { ctx.fillRect(pipeTop.x, pipeTop.y, pipeTop.width, pipeTop.height); ctx.fillRect(pipeBottom.x, pipeBottom.y, pipeBottom.width, pipeBottom.height); } else { let gradient = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipe_width, 0); gradient.addColorStop(0, '#004d00'); gradient.addColorStop(0.5, '#009900'); gradient.addColorStop(1, '#004d00'); ctx.fillStyle = gradient; if (graphics_mode === 'Orta') ctx.shadowBlur = 5; ctx.shadowColor = BLACK; if (graphics_mode === 'Yüksek') ctx.shadowBlur = 10; if (graphics_mode.startsWith('Ultra') || graphics_mode.startsWith('Hiper') || graphics_mode.startsWith('Fantastik')) { ctx.shadowBlur = 20; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5; } ctx.fillRect(pipeTop.x, pipeTop.y, pipeTop.width, pipeTop.height); ctx.fillRect(pipeBottom.x, pipeBottom.y, pipeBottom.width, pipeBottom.height); if (graphics_mode.startsWith('Ultra') || graphics_mode.startsWith('Hiper') || graphics_mode.startsWith('Fantastik')) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(pipe.x + 10, pipe.top - 20, pipe_width - 20, 20); ctx.fillRect(pipe.x + 10, HEIGHT - pipe.bottom, pipe_width - 20, 20); } ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; } }
+        function drawBird() {
+            let birdColor = YELLOW;
+            const skinColors = { "Mavi": MODERN_BLUE, "Mor": PURPLE, "Kırmızı": RED, "Pembe": PINK, "Turuncu": ORANGE, "Yeşil": LIME, "Camgöbeği": CYAN, "Eflatun": MAGENTA, "Altın": GOLD, "Gümüş": "#C0C0C0", "Elmas": "#b9f2ff"};
+            if (skinColors[selected_skin]) birdColor = skinColors[selected_skin];
+            if (selected_skin === 'Gökkuşağı') { let grad = ctx.createLinearGradient(bird.x - bird.radius, bird.y, bird.x + bird.radius, bird.y); grad.addColorStop(0, `hsl(${Date.now()/10 % 360}, 100%, 50%)`); grad.addColorStop(0.5, `hsl(${(Date.now()/10 + 120) % 360}, 100%, 50%)`); grad.addColorStop(1, `hsl(${(Date.now()/10 + 240) % 360}, 100%, 50%)`); birdColor = grad; }
+            if (graphics_mode === 'Düşük' || graphics_mode === 'Orta') { ctx.fillStyle = birdColor; ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius, 0, 2 * Math.PI); ctx.fill(); } 
+            else { let gradient = ctx.createRadialGradient(bird.x-5, bird.y-5, 5, bird.x, bird.y, bird.radius+5); gradient.addColorStop(0, WHITE); gradient.addColorStop(0.8, typeof birdColor === 'string' ? birdColor : YELLOW); gradient.addColorStop(1, BLACK); ctx.fillStyle = gradient; if(graphics_mode.startsWith('Yüksek') || graphics_mode.startsWith('Ultra') || graphics_mode.startsWith('Hiper') || graphics_mode.startsWith('Fantastik')) { ctx.shadowColor = typeof birdColor === 'string' ? birdColor : YELLOW; ctx.shadowBlur = 25; } ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius, 0, 2 * Math.PI); ctx.fill(); ctx.shadowBlur = 0; }
+        }
+
+        function drawMainMenu() {
+            ctx.fillStyle = MODERN_GRAY; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            drawText("GUBIK KUŞU", WIDTH / 2, HEIGHT / 5, TURQUOISE, "90px");
+            drawModernButton(start_button, MODERN_BLUE, TURQUOISE, WHITE);
+            drawModernButton(market_button, MODERN_BLUE, TURQUOISE, WHITE);
+            drawModernButton(inventory_button, MODERN_BLUE, TURQUOISE, WHITE);
+            drawModernButton(gubik_pass_button, GOLD, YELLOW, BLACK);
+            drawModernButton(settings_button, MODERN_BLUE, TURQUOISE, WHITE);
+            drawModernButton(promo_button, ORANGE, YELLOW, BLACK);
+            
+            // YENİ EKLENEN KISIM: Ana menüde tüm para birimlerini göster
+            drawText(`Jeton: ${coin_score}`, WIDTH - 30, 60, YELLOW, "30px", "right");
+            drawText(`Elmas: ${diamond_score}`, WIDTH - 30, 100, CYAN, "30px", "right");
+            drawText(`XP: ${xp_score}`, WIDTH - 30, 140, GREEN, "30px", "right");
+        }
+
+        function drawGame() {
+            if (graphics_mode.startsWith('Hiper') || graphics_mode.startsWith('Fantastik')) { let bgGrad = ctx.createLinearGradient(0,0,0,HEIGHT); bgGrad.addColorStop(0, '#001f3f'); bgGrad.addColorStop(0.5, '#005f7f'); bgGrad.addColorStop(1, '#001f3f'); ctx.fillStyle = bgGrad; } else { ctx.fillStyle = BLUE; }
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            ctx.fillStyle = WHITE; ctx.globalAlpha = 0.8; clouds.forEach(cloud => { ctx.beginPath(); ctx.ellipse(cloud.x, cloud.y, 100, 50, 0, 0, 2 * Math.PI); ctx.fill(); }); ctx.globalAlpha = 1.0;
+            if (isSuperSonicActive) { drawText(`${superSonicPipesLeft} Kolon Kaldı!`, WIDTH/2, 150, RED, "50px"); }
+            drawBird();
+            let currentAura = selected_aura; let shieldVisualActive = false;
+            if (isSuperShieldActive) { currentAura = 'Gökkuşağı'; shieldVisualActive = true; } 
+            else if (isSonicBlastActive) { currentAura = 'Sonik'; shieldVisualActive = true; }
+            else if (isShieldActive) { currentAura = 'Kalkan'; shieldVisualActive = true; }
+            if (currentAura) {
+                const angle = (Date.now() / 5) % 360 * Math.PI / 180;
+                if (currentAura === 'Şimşek') { ctx.strokeStyle = YELLOW; ctx.lineWidth = 4; ctx.shadowColor = YELLOW; ctx.shadowBlur = 15; for (let i = 0; i < 3; i++) { let a = angle + i * (2 * Math.PI / 3); let x1 = bird.x + Math.cos(a) * 30; let y1 = bird.y + Math.sin(a) * 30; let x2 = bird.x + Math.cos(a) * 45; let y2 = bird.y + Math.sin(a) * 45; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); } } 
+                else if (currentAura === 'Su') { ctx.fillStyle = MODERN_BLUE; ctx.shadowColor = MODERN_BLUE; ctx.shadowBlur = 15; for (let i = 0; i < 3; i++) { let a = angle + i * (2 * Math.PI / 3); let x = bird.x + Math.cos(a) * 40; let y = bird.y + Math.sin(a) * 40; ctx.beginPath(); ctx.arc(x,y,10,0,2*Math.PI); ctx.fill(); } }
+                else if (currentAura === 'Kalkan') { ctx.strokeStyle = ORANGE; ctx.lineWidth = 5; ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.2; ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius + 10, 0, 2*Math.PI); ctx.stroke(); ctx.globalAlpha = 1.0; }
+                else if (currentAura === 'Gökkuşağı') { ctx.strokeStyle = `hsl(${Date.now()/5 % 360}, 100%, 50%)`; ctx.lineWidth = 8; ctx.shadowColor = WHITE; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius + 15, angle, angle + Math.PI); ctx.stroke(); }
+                else if (currentAura === 'Sonik') { ctx.strokeStyle = CYAN; ctx.lineWidth = 2; for(let i=1; i<4; i++) { ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius + i*10 + (Math.sin(Date.now()/100)*5), 0, 2*Math.PI); ctx.stroke();} }
+                ctx.shadowBlur = 0;
+            }
+            if(!isSuperSonicActive) pipes.forEach(pipe => drawPipe(pipe));
+            if (powerups.shield > 0) { const shieldBtn = {x: WIDTH - 170, y: HEIGHT-60, width: 150, height: 50, text: `Kalkan (${powerups.shield})`}; drawModernButton(shieldBtn, ORANGE, YELLOW, BLACK); }
+            drawText(`Jeton: ${coin_score}`, 120, 55, YELLOW, "30px", "left");
+            drawText(`Elmas: ${diamond_score}`, 120, 90, CYAN, "30px", "left");
+            drawText(`Skor: ${score}`, WIDTH - 30, 60, WHITE, "30px", "right");
+        }
+
+        function drawMarket() {
+            ctx.fillStyle = MODERN_GRAY; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            ctx.save(); ctx.translate(0, -marketScrollY);
+            drawText("DÜKKAN", WIDTH / 2, 100 + marketScrollY, TURQUOISE, "60px");
+            const items = [ { type: 'skin', name: 'Mavi', price: 5, y: 200 }, { type: 'skin', name: 'Mor', price: 50, y: 350 }, { type: 'aura', name: 'Şimşek', price: 100, y: 600 }, { type: 'aura', name: 'Su', price: 150, y: 750 }, { type: 'powerup', name: 'Kolon Kırıcı', id: 'shield', price: 20, y: 1000 }, { type: 'powerup', name: '2x Jeton', id: 'coin_doubler', price: 40, y: 1150 }, { type: 'header', name: 'YENİ KOSTÜMLER', y: 1300 }, { type: 'skin', name: 'Kırmızı', price: 60, y: 1400 }, { type: 'skin', name: 'Pembe', price: 60, y: 1550 }, { type: 'skin', name: 'Turuncu', price: 75, y: 1700 }, { type: 'skin', name: 'Yeşil', price: 75, y: 1850 }, { type: 'skin', name: 'Camgöbeği', price: 100, y: 2000 }, { type: 'skin', name: 'Eflatun', price: 100, y: 2150 }, { type: 'skin', name: 'Altın', price: 250, y: 2300 }, { type: 'skin', name: 'Gümüş', price: 250, y: 2450 }, { type: 'skin', name: 'Elmas', price: 500, y: 2600 }, { type: 'skin', name: 'Gökkuşağı', price: 1000, y: 2750 } ];
+            items.forEach(item => { if(item.type === 'header') { drawText(item.name, WIDTH/2, item.y, ORANGE, "40px"); return; } let btn = { x: WIDTH/2 - 175, y: item.y, width: 350, height: 100 }; let owned = (item.type === 'skin' && inventory.includes(item.name)) || (item.type === 'aura' && auras_inventory.includes(item.name)); let text = `${item.name} - ${owned ? "ALINDI" : item.price + " Jeton"}`; if(item.type === 'powerup') text = `SATIN AL: ${item.name} (${item.price} Jeton)`; let b = {...btn, text: text}; drawModernButton(b, owned ? GRAY : MODERN_BLUE, TURQUOISE, WHITE); });
+            ctx.restore();
+            const backButton = {x: 20, y: 20, width: 150, height: 60, text: "GERİ"}; drawModernButton(backButton, RED, ORANGE, WHITE);
+            drawText(`Jeton: ${coin_score}`, WIDTH - 30, 60, YELLOW, "40px", "right");
+        }
+        
+        const gubikPassRewards = [ { id: 1, xp: 10, type: 'coin', amount: 500, text: '500 Jeton' }, { id: 2, xp: 20, type: 'coin', amount: 200, text: '200 Jeton' }, { id: 3, xp: 40, type: 'coin', amount: 100, text: '100 Jeton' }, { id: 4, xp: 60, type: 'coin', amount: 20, text: '20 Jeton' }, { id: 5, xp: 100, type: 'skin', name: 'Gökkuşağı', text: 'Gökkuşağı Top' }, { id: 6, xp: 150, type: 'powerup', name: 'super_shield', amount: 1, text: 'Süper Kırıcı' }, { id: 7, xp: 200, type: 'text', text: 'VIP Gerekli', subtext: 'Süper Kırıcı x5' }, { id: 8, xp: 250, type: 'text', text: 'VIP Gerekli', subtext: 'Sonik Patlama' }, { id: 9, xp: 300, type: 'text', text: 'VIP Gerekli', subtext: 'Süper Sonik' }, { id: 10, xp: 500, type: 'text', text: 'EXVIP Gelecek', subtext: 'Tanrı Modu' }, ];
+        function drawGubikPass() {
+            ctx.fillStyle = MODERN_GRAY; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            drawText("GUBIK PASS", WIDTH / 2, 80, GOLD, "60px");
+            const backButton = {x: 20, y: 20, width: 150, height: 60, text: "GERİ"}; drawModernButton(backButton, RED, ORANGE, WHITE);
+            drawText(`Elmas: ${diamond_score}`, WIDTH - 30, 60, CYAN, "40px", "right");
+            let maxXP = gubikPassRewards[gubikPassRewards.length - 1].xp; let progress = xp_score / maxXP;
+            ctx.fillStyle = "#1a1a1a"; ctx.roundRect(WIDTH/2 - 300, 120, 600, 40, [10]); ctx.fill();
+            ctx.fillStyle = GOLD; ctx.roundRect(WIDTH/2 - 300, 120, 600 * progress, 40, [10]); ctx.fill();
+            drawText(`${xp_score} / ${maxXP} XP`, WIDTH/2, 150, WHITE, "25px");
+            ctx.save(); ctx.translate(-gubikPassScrollX, 0);
+            gubikPassRewards.forEach((reward, i) => {
+                let cardX = 200 + i * 250; let cardY = HEIGHT / 2 - 100; let cardW = 220; let cardH = 250;
+                let canClaim = isGubikPassActive && xp_score >= reward.xp && !claimed_rewards.includes(reward.id);
+                let isClaimed = claimed_rewards.includes(reward.id);
+                ctx.fillStyle = isClaimed ? GOLD : (canClaim ? GREEN : MODERN_BLUE);
+                ctx.globalAlpha = (isGubikPassActive || i < 6) ? 1.0 : 0.5;
+                ctx.roundRect(cardX, cardY, cardW, cardH, [15]); ctx.fill(); ctx.globalAlpha = 1.0;
+                drawText(`${i+1}. Seviye`, cardX + cardW/2, cardY + 40, WHITE, "25px");
+                drawText(reward.text, cardX + cardW/2, cardY + 100, WHITE, "20px");
+                if (reward.subtext) drawText(reward.subtext, cardX + cardW/2, cardY + 120, GRAY, "15px");
+                drawText(`Gereken: ${reward.xp} XP`, cardX + cardW/2, cardY + 180, YELLOW, "20px");
+                if (canClaim) { let claimBtn = {x: cardX + 35, y: cardY + 200, width: 150, height: 40, text: "AL"}; drawModernButton(claimBtn, ORANGE, YELLOW, BLACK); } 
+                else if (isClaimed) { drawText("ALINDI", cardX + cardW/2, cardY + 220, WHITE, "25px"); }
+            });
+            ctx.restore();
+            if (!isGubikPassActive) { const unlockBtn = {x: WIDTH/2 - 175, y: HEIGHT - 100, width: 350, height: 60, text: `50 Elmas ile Aç`}; drawModernButton(unlockBtn, GREEN, LIME, BLACK); }
+        }
+
+        function drawSettings() { ctx.fillStyle = MODERN_GRAY; ctx.fillRect(0, 0, WIDTH, HEIGHT); drawText("AYARLAR", WIDTH / 2, 80, TURQUOISE, "60px"); const gfxLevels = ['Düşük', 'Orta', 'Yüksek', 'Ultra', 'Hiper', 'Fantastik', 'Hiperondo']; drawText("Grafikler", WIDTH/4, 150, WHITE, "30px"); gfxLevels.forEach((level, i) => { let btn = {x: WIDTH/4 - 125, y: 180 + i * 55, width: 250, height: 50, text: level}; drawModernButton(btn, graphics_mode === level ? GREEN : MODERN_BLUE, TURQUOISE, WHITE); }); const fpsLevels = [10, 30, 60, 90, 120, 240, 350, 560, 890]; drawText("FPS Limiti", WIDTH * 3 / 4, 150, WHITE, "30px"); fpsLevels.forEach((fps, i) => { let btn = {x: WIDTH * 3 / 4 - 125, y: 180 + i * 55, width: 250, height: 50, text: `${fps} FPS`}; drawModernButton(btn, frame_rate === fps ? GREEN : MODERN_BLUE, TURQUOISE, WHITE); }); const backButton = {x: 20, y: 20, width: 150, height: 60, text: "GERİ"}; drawModernButton(backButton, RED, ORANGE, WHITE); }
+        function drawInventory() { ctx.fillStyle = MODERN_GRAY; ctx.fillRect(0, 0, WIDTH, HEIGHT); drawText("ENVANTER", WIDTH / 2, 100, TURQUOISE, "60px"); drawText("KOSTÜMLER", WIDTH / 2, 200, WHITE, "40px"); let skinStartX = WIDTH / 2 - (inventory.length - 1) * 80; inventory.forEach((skin, index) => { let x = skinStartX + index * 160; let color = (skin === "Sarı") ? YELLOW : (skin === "Mavi" ? MODERN_BLUE : PURPLE); if(skin === 'Gökkuşağı') color = `hsl(${Date.now()/10 % 360}, 100%, 50%)`; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, 280, 50, 0, 2*Math.PI); ctx.fill(); if (skin === selected_skin) { ctx.strokeStyle = GREEN; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, 280, 53, 0, 2*Math.PI); ctx.stroke(); } }); if (auras_inventory.length > 0) { drawText("AURALAR", WIDTH / 2, 450, WHITE, "40px"); let auraStartX = WIDTH/2 - (auras_inventory.length -1) * 80; auras_inventory.forEach((aura, index) => { let x = auraStartX + index * 160; let color = (aura === 'Şimşek' ? YELLOW : MODERN_BLUE); ctx.fillStyle = color; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(x, 530, 50, 0, 2*Math.PI); ctx.fill(); ctx.globalAlpha = 1.0; if (aura === selected_aura) { ctx.strokeStyle = GREEN; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, 530, 53, 0, 2*Math.PI); ctx.stroke(); } }); } const backButton = {x: 20, y: 20, width: 150, height: 60, text: "GERİ"}; drawModernButton(backButton, RED, ORANGE, WHITE); }
+        let messageTimer = null; let lastMessageText = ""; let lastMessageColor = WHITE;
+        function showMessage(text, color, duration, nextState) { gameState = "message"; lastMessageText = text; lastMessageColor = color; clearTimeout(messageTimer); messageTimer = setTimeout(() => { if(gameState === "message") gameState = nextState; }, duration); }
+
+        // ====== OYUN GÜNCELLEME FONKSİYONU ======
+        function updateGame() {
+            if (isShieldActive && Date.now() > shieldEndTime) { isShieldActive = false; }
+            if (isSuperShieldActive && Date.now() > superShieldEndTime) { isSuperShieldActive = false; coinMultiplier = 1; }
+            if (isSonicBlastActive && Date.now() > sonicBlastEndTime) { isSonicBlastActive = false; coinMultiplier = 1; diamondMultiplier = 1; }
+            bird.velocity += gravity; bird.y += bird.velocity;
+            clouds.forEach(cloud => { cloud.x -= 1; if (cloud.x < -100) { cloud.x = WIDTH + 100; } });
+            let current_pipe_speed = pipe_speed;
+            if (isShieldActive) current_pipe_speed *= 4;
+            if (isSuperShieldActive || isSonicBlastActive) current_pipe_speed *= 8;
+            pipes.forEach(pipe => {
+                pipe.x -= current_pipe_speed;
+                if (pipe.x < bird.x - pipe_width && !pipe.passed) {
+                    if (isSuperSonicActive) { superSonicPipesLeft--; if(superSonicPipesLeft <= 0) isSuperSonicActive = false; }
+                    score++; pipe_pass_counter++;
+                    coin_score += coinMultiplier;
+                    if(pipe_pass_counter % 5 === 0) diamond_score += diamondMultiplier;
+                    xp_score++;
+                    if (score > max_score) max_score = score;
+                    pipe.passed = true;
+                }
+                if (pipe.x < -pipe_width) { pipe.x = WIDTH; pipe.top = Math.floor(Math.random() * (HEIGHT/2 - 50)) + 50; pipe.bottom = HEIGHT - (pipe.top + pipe_gap); pipe.passed = false; }
+            });
+            let isImmune = isShieldActive || isSuperShieldActive || isSonicBlastActive || isSuperSonicActive;
+            if ((bird.y + bird.radius > HEIGHT || bird.y - bird.radius < 0) && !isImmune) { gameState = "game_over"; }
+            if(!isSuperSonicActive) { pipes.forEach(pipe => { if (bird.x + bird.radius > pipe.x && bird.x - bird.radius < pipe.x + pipe_width) { if (bird.y - bird.radius < pipe.top || bird.y + bird.radius > HEIGHT - pipe.bottom) { if (isImmune) { pipe.x = -pipe_width -1; } else { gameState = "game_over"; } } } }); }
+        }
+        
+        // ====== ANA OYUN DÖNGÜSÜ ======
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
+            now = Date.now(); elapsed = now - then;
+            if (elapsed > fpsInterval) {
+                then = now - (elapsed % fpsInterval);
+                ctx.clearRect(0, 0, WIDTH, HEIGHT); 
+                switch (gameState) {
+                    case "main_menu": drawMainMenu(); break;
+                    case "playing": updateGame(); drawGame(); break;
+                    case "game_over": showMessage(`OYUN BİTTİ! Skor: ${score}`, RED, 2000, "main_menu"); resetGame(); break;
+                    case "market": drawMarket(); break;
+                    case "settings": drawSettings(); break;
+                    case "inventory": drawInventory(); break;
+                    case "gubik_pass": drawGubikPass(); break;
+                    case "message":
+                        if (lastMessageText.includes("OYUN BİTTİ")) { drawGame(); } 
+                        else if(lastMessageText.includes("Jeton") || lastMessageText.includes("Alındı")) { drawMarket(); } 
+                        else { drawMainMenu(); }
+                        drawText(lastMessageText, WIDTH / 2, HEIGHT / 2, lastMessageColor, "60px"); break;
+                }
+            }
+        }
+        
+        function startAnimating(fps) { fpsInterval = 1000 / fps; then = Date.now(); gameLoop(); }
+
+        // ====== OLAY DİNLEYİCİLERİ ======
+        canvas.addEventListener('mousemove', (event) => { const rect = canvas.getBoundingClientRect(); const mousePos = { x: event.clientX - rect.left, y: event.clientY - rect.top }; let currentHover = null; if (gameState === 'main_menu') { [start_button, market_button, inventory_button, settings_button, promo_button, gubik_pass_button].forEach(btn => { if(isMouseOver(btn, mousePos)) currentHover = btn; }); } hoveredButton = currentHover; });
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect(); const mousePos = { x: event.clientX - rect.left, y: event.clientY - rect.top }; if(gameState === "message") return; 
+            if (gameState === 'main_menu') {
+                if (isMouseOver(start_button, mousePos)) { resetGame(); gameState = 'playing'; }
+                else if (isMouseOver(market_button, mousePos)) { gameState = 'market'; }
+                else if (isMouseOver(settings_button, mousePos)) { gameState = 'settings'; }
+                else if (isMouseOver(inventory_button, mousePos)) { gameState = 'inventory'; }
+                else if (isMouseOver(gubik_pass_button, mousePos)) { gameState = 'gubik_pass'; }
+                else if (isMouseOver(promo_button, mousePos)) { document.getElementById('promo-container').style.display = 'flex'; }
+            } else if (gameState === 'playing') { const shieldBtn = {x: WIDTH - 170, y: HEIGHT-60, width: 150, height: 50}; if(powerups.shield > 0 && isMouseOver(shieldBtn, mousePos) && !isShieldActive){ powerups.shield--; isShieldActive = true; shieldEndTime = Date.now() + 5000; } else { bird.velocity = jump_strength; } }
+            else if (gameState === 'market') {
+                const items = [ { type: 'skin', name: 'Mavi', price: 5, y: 200 }, { type: 'skin', name: 'Mor', price: 50, y: 350 }, { type: 'aura', name: 'Şimşek', price: 100, y: 600 }, { type: 'aura', name: 'Su', price: 150, y: 750 }, { type: 'powerup', name: 'Kolon Kırıcı', id: 'shield', price: 20, y: 1000 }, { type: 'powerup', name: '2x Jeton', id: 'coin_doubler', price: 40, y: 1150 }, { type: 'skin', name: 'Kırmızı', price: 60, y: 1400 }, { type: 'skin', name: 'Pembe', price: 60, y: 1550 }, { type: 'skin', name: 'Turuncu', price: 75, y: 1700 }, { type: 'skin', name: 'Yeşil', price: 75, y: 1850 }, { type: 'skin', name: 'Camgöbeği', price: 100, y: 2000 }, { type: 'skin', name: 'Eflatun', price: 100, y: 2150 }, { type: 'skin', name: 'Altın', price: 250, y: 2300 }, { type: 'skin', name: 'Gümüş', price: 250, y: 2450 }, { type: 'skin', name: 'Elmas', price: 500, y: 2600 }, { type: 'skin', name: 'Gökkuşağı', price: 1000, y: 2750 } ];
+                items.forEach(item => { if(item.type === 'header') return; let btn = { x: WIDTH/2 - 175, y: item.y - marketScrollY, width: 350, height: 100 }; if(isMouseOver(btn, mousePos)) { if (coin_score >= item.price) { if(item.type === 'skin' && !inventory.includes(item.name)) { coin_score -= item.price; inventory.push(item.name); } else if(item.type === 'aura' && !auras_inventory.includes(item.name)) { coin_score -= item.price; auras_inventory.push(item.name); } else if(item.type === 'powerup') { coin_score -= item.price; powerups[item.id]++; } } else { showMessage("Yetersiz Jeton!", RED, 1500, "market"); } } });
+                const backButton = {x: 20, y: 20, width: 150, height: 60}; if(isMouseOver(backButton, mousePos)) gameState = 'main_menu';
+            } else if (gameState === 'settings') { const gfxLevels = ['Düşük', 'Orta', 'Yüksek', 'Ultra', 'Hiper', 'Fantastik', 'Hiperondo']; gfxLevels.forEach((level, i) => { let btn = {x: WIDTH/4 - 125, y: 180 + i * 55, width: 250, height: 50}; if(isMouseOver(btn, mousePos)) graphics_mode = level; }); const fpsLevels = [10, 30, 60, 90, 120, 240, 350, 560, 890]; fpsLevels.forEach((fps, i) => { let btn = {x: WIDTH * 3 / 4 - 125, y: 180 + i * 55, width: 250, height: 50}; if(isMouseOver(btn, mousePos)) { frame_rate = fps; startAnimating(frame_rate); } }); const backButton = {x: 20, y: 20, width: 150, height: 60}; if(isMouseOver(backButton, mousePos)) gameState = 'main_menu';
+            } else if (gameState === 'inventory') { const backButton = {x: 20, y: 20, width: 150, height: 60}; if(isMouseOver(backButton, mousePos)) { gameState = 'main_menu'; return; } let skinStartX = WIDTH / 2 - (inventory.length - 1) * 80; inventory.forEach((skin, index) => { if(isMouseOverCircle({x: skinStartX + index * 160, y: 280, radius: 50}, mousePos)) { selected_skin = skin; } }); let auraStartX = WIDTH/2 - (auras_inventory.length -1) * 80; auras_inventory.forEach((aura, index) => { if(isMouseOverCircle({x: auraStartX + index * 160, y: 530, radius: 50}, mousePos)) { selected_aura = (selected_aura === aura) ? null : aura; } });
+            } else if (gameState === 'gubik_pass') {
+                const backButton = {x: 20, y: 20, width: 150, height: 60}; if(isMouseOver(backButton, mousePos)) gameState = 'main_menu';
+                const unlockBtn = {x: WIDTH/2 - 175, y: HEIGHT - 100, width: 350, height: 60};
+                if (!isGubikPassActive && isMouseOver(unlockBtn, mousePos)) { if(diamond_score >= 50) { diamond_score -= 50; isGubikPassActive = true; } }
+                gubikPassRewards.forEach((reward, i) => {
+                    let canClaim = isGubikPassActive && xp_score >= reward.xp && !claimed_rewards.includes(reward.id);
+                    if(canClaim) {
+                        let claimBtn = {x: 200 + i * 250 - gubikPassScrollX, y: HEIGHT / 2 + 100, width: 150, height: 40};
+                        if (isMouseOver(claimBtn, mousePos)) {
+                            claimed_rewards.push(reward.id);
+                            if (reward.type === 'coin') coin_score += reward.amount;
+                            if (reward.type === 'skin' && !inventory.includes(reward.name)) inventory.push(reward.name);
+                            if (reward.type === 'powerup') powerups[reward.name] += reward.amount;
+                        }
+                    }
+                });
+            }
+        });
+
+        canvas.addEventListener('wheel', (event) => { if (gameState === 'market') { event.preventDefault(); marketScrollY += event.deltaY * 0.5; if (marketScrollY < 0) marketScrollY = 0; if (marketScrollY > marketContentHeight - HEIGHT) marketScrollY = marketContentHeight - HEIGHT; } else if (gameState === 'gubik_pass') { event.preventDefault(); gubikPassScrollX += event.deltaY * 0.5; if(gubikPassScrollX < 0) gubikPassScrollX = 0; } });
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; WIDTH = canvas.width; HEIGHT = canvas.height; updateButtonLayout(); resetGame(); });
+        
+        document.getElementById('promo-submit').addEventListener('click', () => { // YENİ KODLAR EKLENDİ
+            const input = document.getElementById('promo-input');
+            if (input.value === '0012') { coin_score += 1000; alert("Tebrikler! 1000 Jeton kazandınız!"); } 
+            else if (input.value === '9922') { diamond_score += 50; alert("Tebrikler! 50 Elmas kazandınız!"); }
+            else if (input.value === '3355') { xp_score += 200; alert("Tebrikler! 200 XP kazandınız!"); }
+            else { alert("Geçersiz promo kodu!"); }
+            input.value = ""; document.getElementById('promo-container').style.display = 'none';
+        });
+
+        document.getElementById('promo-close').addEventListener('click', () => { document.getElementById('promo-input').value = ""; document.getElementById('promo-container').style.display = 'none'; });
+        window.addEventListener('keydown', (event) => { if(gameState === 'playing') { if (event.key === 'e' || event.key === 'E') { if(powerups.shield > 0 && !isShieldActive){ powerups.shield--; isShieldActive = true; shieldEndTime = Date.now() + 5000; } } if (event.key === 'r' || event.key === 'R') { if(powerups.super_shield > 0 && !isSuperShieldActive) { powerups.super_shield--; isSuperShieldActive = true; coinMultiplier=3; superShieldEndTime = Date.now() + 5000; } } if (event.key === 't' || event.key === 'T') { if(powerups.sonic_blast > 0 && !isSonicBlastActive) { powerups.sonic_blast--; isSonicBlastActive = true; coinMultiplier=5; diamondMultiplier=2; sonicBlastEndTime = Date.now() + 7000; } } if (event.key === 'y' || event.key === 'Y') { if(powerups.super_sonic_blast > 0 && !isSuperSonicActive) { powerups.super_sonic_blast--; isSuperSonicActive = true; superSonicPipesLeft = 100; } } } });
+
+        // ====== OYUNU BAŞLAT ======
+        updateButtonLayout(); initializePipes(); initializeClouds(); startAnimating(frame_rate);
+    </script>
+</body>
+</html>

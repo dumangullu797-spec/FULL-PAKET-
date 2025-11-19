@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>GubikGames 3D FPS - Nihai Düzeltme v1.1.1</title>
+<!-- YENİ: Modern bir görünüm için Google'dan yazı tipi eklendi -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin: 0; overflow: hidden; 
+    /* ARKA PLAN BURADA YENİ STİLLERLE DEĞİŞTİRİLECEK */
+    background: #1a2a3a;
+    font-family: 'Exo 2', sans-serif; /* YENİ: Oyunun tamamı için modern font */
+    color: #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    display: none; /* Oyun başlayana kadar gizli */
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute; top: 15px; left: 15px;
+    color: #00ff00; font-weight: bold; font-size: 22px;
+    text-shadow: 0 0 8px #000; z-index: 20;
+    display: none;
+  }
+  
+  /* <<< CROSSHAIR İLE İLGİLİ BÖLÜM >>> */
+  /* Crosshair */
+  #crosshair {
+    position: absolute; top: 50%; left: 50%;
+    width: 24px; height: 24px;
+    margin-left: -12px; margin-top: -12px;
+    pointer-events: none; z-index: 30;
+    display: none; /* JavaScript ile 'block' yapılacak */
+  }
+  #crosshair:before, #crosshair:after {
+    content: '';
+    position: absolute;
+    background: #00ff00;
+  }
+  #crosshair:before {
+    left: 50%; top: 0;
+    width: 2px; height: 24px;
+    margin-left: -1px;
+  }
+  #crosshair:after {
+    top: 50%; left: 0;
+    width: 24px; height: 2px;
+    margin-top: -1px;
+  }
+  /* <<< CROSSHAIR BÖLÜMÜ SONU >>> */
+
+  /* FPS Sayacı */
+  #fps-counter {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    color: #00ff00;
+    font-weight: bold;
+    font-size: 22px;
+    text-shadow: 0 0 8px #000;
+    z-index: 20;
+    display: none;
+  }
+
+  /* Yeni: Coins ve Elmas Gösterimi */
+  #currency-display {
+    position: absolute;
+    top: 15px;
+    right: 150px; /* FPS sayacının soluna veya altına gelecek şekilde ayarlandı */
+    color: #fff;
+    font-weight: bold;
+    font-size: 22px;
+    text-shadow: 0 0 8px #00ff00; /* Yeşil gölge */
+    z-index: 20;
+    display: none; /* Başlangıçta gizli, menü açıldığında gösterilecek */
+  }
+  
+  /* Yeni: Versiyon Numarası */
+  #version-display {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: white;
+    color: black;
+    border-radius: 50%; /* Yuvarlak top */
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    z-index: 20;
+    box-shadow: 0 0 8px rgba(0,0,0,0.5);
+    display: none; /* Başlangıçta gizli */
+  }
+
+
+  /* Genel Ekran Katmanları */
+  .screen-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.85); /* Bu stil modern menü tarafından ezilecek */
+    text-align: center;
+    transition: opacity 0.5s ease;
+  }
+
+  /* Loading Screen */
+  #loading-screen {
+    background: #111; /* Siyah arka plan */
+    display: none; /* --- YENİ EKLENDİ: Başlangıçta gizli --- */
+  }
+  #loading-screen h1 {
+    font-size: 5em;
+    font-weight: bold;
+    color: #00ff00; /* Yeşil yazı */
+    text-shadow: 0 0 15px #00ff00, 0 0 25px #00ff00;
+    animation: pulse 1.5s infinite alternate;
+    opacity: 0; /* Başlangıçta gizli */
+    animation: fadeAndScaleIn 1s forwards; /* Animasyonla görünür olsun */
+  }
+
+  /* Main Menu */
+  #main-menu {
+    display: none;
+  }
+  #main-menu h1 {
+    font-size: 4em;
+    color: #00ee00;
+    text-shadow: 0 0 12px #00ee00;
+    margin-bottom: 40px;
+  }
+  .menu-button {
+    padding: 15px 40px;
+    font-size: 2em;
+    font-weight: bold;
+    background: linear-gradient(45deg, #00ff00, #00bb00);
+    color: #111;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+    transition: all 0.3s ease;
+    margin: 10px 0;
+  }
+  .menu-button:hover {
+    background: linear-gradient(45deg, #00bb00, #00ff00);
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+    transform: translateY(-3px);
+  }
+  .menu-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+  }
+  /* Hakkında butonu için daha küçük stil */
+  #about-button {
+    padding: 10px 25px; /* Daha küçük padding */
+    font-size: 1.5em; /* Daha küçük font boyutu */
+    margin-top: 20px; /* Diğer butonlardan ayır */
+  }
+
+  /* Settings Menu */
+  #settings-menu {
+    display: none;
+  }
+  #settings-menu h2 {
+    font-size: 3em;
+    color: #00ee00;
+    text-shadow: 0 0 10px #00ee00;
+    margin-bottom: 30px;
+  }
+  .setting-category {
+    margin-bottom: 30px;
+    width: 80%;
+    max-width: 600px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 10px;
+  }
+  .setting-category h3 {
+    font-size: 1.8em;
+    color: #00ffff;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #00ffff;
+    padding-bottom: 10px;
+  }
+  .setting-options label {
+    display: inline-block;
+    margin: 0 15px;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: #e0e0e0;
+  }
+  .setting-options input[type="radio"] {
+    margin-right: 5px;
+    transform: scale(1.2);
+  }
+  .setting-options input[type="range"] {
+    width: 80%;
+    margin-top: 10px;
+  }
+  .setting-options button {
+      padding: 10px 20px; /* Menü butonu stili */
+      font-size: 1em;
+      margin-left: 10px;
+      background: linear-gradient(45deg, #00ff00, #00bb00);
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
+      transition: all 0.3s ease;
+  }
+  .setting-options button:hover {
+      background: linear-gradient(45deg, #00bb00, #00ff00);
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+      transform: translateY(-2px);
+  }
+  .setting-options button:active {
+      transform: translateY(0);
+      box-shadow: 0 0 5px rgba(0, 255, 0, 0.4);
+  }
+
+
+  /* Promosyon Kodu Ekranı (Varsa) */
+  #promo-code-overlay {
+    display: none; 
+  }
+  #promo-code-overlay h2 {
+    font-size: 3em;
+    color: #00ee00;
+    text-shadow: 0 0 10px #00ee00;
+    margin-bottom: 30px;
+  }
+  #promo-code-overlay input[type="text"] {
+    padding: 15px;
+    font-size: 1.5em;
+    border-radius: 8px;
+    border: none;
+    width: 300px;
+    text-align: center;
+    margin-bottom: 20px;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+  }
+  #promo-code-overlay button {
+    margin-top: 10px;
+  }
+  #promo-code-overlay p {
+    margin-top: 20px;
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+  
+  /* YENİ: KOD GİRİŞ EKRANI (Hacker Alanı/Geliştirici Konsolu) */
+  #cheat-code-overlay {
+    background-color: #000; /* Tamamen siyah terminal */
+    font-family: 'Consolas', 'Courier New', monospace; /* Monospace font */
+    color: #00ff00; /* Genel metin için yeşil */
+    border: 1px solid #00ff00; /* Yeşil çerçeve */
+    border-radius: 5px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.7); /* Güçlü yeşil parlama */
+    padding: 20px;
+    width: 100%; /* Tam ekran genişlik */
+    height: 100%; /* Tam ekran yükseklik */
+    display: flex;
+    flex-direction: column; /* Öğeleri dikey hizala */
+    justify-content: flex-start; /* İçeriği yukarıdan başlat */
+    align-items: flex-start; /* İçeriği sola hizala */
+    box-sizing: border-box; /* Padding ve border'ı genişliğe dahil et */
+  }
+  #cheat-code-overlay h2 {
+    font-size: 1.8em; /* Başlık boyutu */
+    color: #00ff00; /* Yeşil başlık */
+    text-shadow: none; /* Gölge yok */
+    margin-bottom: 15px;
+    align-self: flex-start; /* Sola hizala */
+    border-bottom: 1px dashed #00ff00; /* Kesik çizgili yeşil alt çizgi */
+    padding-bottom: 5px;
+    width: 100%; /* Tam genişlik */
+    text-align: left;
+  }
+  /* Komut inputu ve prompt'u için yeni kapsayıcı */
+  #cheat-code-overlay .input-line {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    margin-bottom: 10px; /* Terminal çıktısı ile arasında boşluk */
+    order: -1; /* Input alanını en üste taşı */
+    justify-content: center; /* Inputu ortala */
+  }
+  #cheat-code-overlay .input-line span { /* > işareti için */
+    color: #00ff00;
+    font-size: 1.1em;
+    margin-right: 5px;
+  }
+  #cheat-code-overlay input[type="text"] {
+    background-color: transparent; /* Şeffaf arka plan */
+    color: #00ff00; /* Input metni yeşil */
+    border: none; /* Çerçeve yok */
+    padding: 8px 0; /* Sol ve sağ padding yok */
+    font-size: 1.1em;
+    width: calc(100% - 15px); /* Genişliği ayarla, > işareti için boşluk */
+    text-align: left;
+    box-shadow: none;
+    caret-color: #00ff00; /* İmleç rengi yeşil */
+    outline: none; /* Odaklandığında varsayılan outline'ı kaldır */
+    flex-grow: 1; /* Geri kalan genişliği kapla */
+  }
+
+  #terminal-output {
+    flex-grow: 1; /* Kalan tüm alanı kapla */
+    width: 100%;
+    overflow-y: auto; /* Kaydırılabilir çıktı alanı */
+    padding-right: 10px; /* Kaydırma çubuğu için boşluk */
+    margin-bottom: 10px;
+    font-size: 1.0em;
+    line-height: 1.4;
+    color: #00ff00; /* Tüm çıktı yeşil */
+    order: 0; /* Çıktıyı input'un altına al */
+  }
+  #terminal-output::-webkit-scrollbar { /* Scrollbar'ı gizle veya stilize et */
+    width: 8px;
+  }
+  #terminal-output::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 255, 0, 0.3);
+    border-radius: 4px;
+  }
+  #terminal-output::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  #terminal-output .error { /* Hata mesajları için özel renk */
+      color: #ff0000;
+  }
+  #terminal-output .info { /* Bilgi mesajları için özel renk */
+      color: #00ffff; /* Açık mavi/cyan */
+  }
+  #terminal-output .command-echo { /* Girilen komutların terminalde yankılanması */
+      color: #98c379; /* Daha koyu yeşil */
+  }
+
+
+  /* Yeni: Hakkında Ekranı */
+  #about-overlay {
+    display: none; /* Başlangıçta gizli */
+  }
+  #about-overlay h2 {
+    font-size: 3em;
+    color: #00ee00;
+    text-shadow: 0 0 10px #00ee00;
+    margin-bottom: 30px;
+  }
+  #about-content {
+    width: 80%;
+    max-width: 700px;
+    height: 300px; /* Scrollable alan yüksekliği */
+    overflow-y: auto; /* Scroll çubuğu ekler */
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 1.1em;
+    line-height: 1.6;
+    text-align: left;
+    color: #e0e0e0;
+    margin-bottom: 20px;
+    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.3); /* İç gölge efekti */
+  }
+  #about-content h3 {
+    color: #00ffff;
+    font-size: 1.5em;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #00ffff;
+    padding-bottom: 5px;
+  }
+  #about-content p {
+    margin-bottom: 10px;
+  }
+  #about-content a {
+    color: #00ff00;
+    text-decoration: none;
+  }
+  #about-content a:hover {
+    text-decoration: underline;
+  }
+  
+  /* In-Game Title (GubikGames Intro) */
+  #in-game-title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 6em;
+    font-weight: bold;
+    color: #00ffee;
+    text-shadow: 0 0 20px #00ffee, 0 0 30px #00ffee;
+    z-index: 50;
+    opacity: 0;
+    display: none;
+    animation: fadeInOut 3s forwards; /* 3 saniye animasyon */
+  }
+
+  /* Yeni: Unreal Engine Başlık Animasyonu */
+  #unreal-screen {
+    display: none; /* Başlangıçta gizli */
+    background: rgba(0, 0, 0, 0.95); /* Tam ekran arka plan */
+  }
+  #unreal-screen h1 {
+    font-size: 5em;
+    font-weight: bold;
+    color: #888888; /* Unreal Engine grisi */
+    text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff;
+    opacity: 0; /* Başlangıçta gizli */
+    animation: unrealFadeIn 5s forwards; /* Yeni animasyon: 5 saniye */
+    display: flex; /* Logo ve metin yan yana gelsin */
+    align-items: center;
+    justify-content: center;
+  }
+  #unreal-screen h1 span {
+    margin: 0 5px; /* Metin ve logo arasına boşluk */
+  }
+  #unreal-logo {
+    display: inline-block;
+    width: 60px; /* Logo genişliği (örnek) */
+    height: 60px; /* Logo yüksekliği (örnek) */
+  }
+
+  @keyframes unrealFadeIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.0); }
+    100% { opacity: 0; transform: scale(1.2); }
+  }
+
+
+  /* Yeni: Kabul Ekranı */
+  #accept-screen {
+    z-index: 200; /* En üstte olsun */
+    background: rgba(0, 0, 0, 0.95);
+    display: none; /* --- YENİ EKLENDİ: Başlangıçta gizli --- */
+  }
+  #accept-screen h2 {
+    font-size: 2.5em;
+    color: #00ff00;
+    margin-bottom: 20px;
+  }
+  #policy-content {
+    width: 70%;
+    max-width: 800px;
+    height: 400px; /* Kaydırılabilir alanın yüksekliği */
+    overflow-y: scroll; /* Kaydırma çubuğu */
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #00ff00;
+    padding: 25px;
+    font-size: 1em;
+    line-height: 1.5;
+    text-align: left;
+    color: #e0e0e0;
+    box-shadow: inset 0 0 15px rgba(0, 255, 0, 0.5);
+    margin-bottom: 30px;
+  }
+  #accept-button {
+    padding: 18px 50px;
+    font-size: 2.2em;
+    background: linear-gradient(45deg, #ff0000, #bb0000); /* Kırmızı başlangıç */
+    color: #eee;
+    border: none;
+    border-radius: 10px;
+    cursor: not-allowed; /* Başlangıçta pasif imleç */
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+    transition: all 0.3s ease;
+  }
+  #accept-button:not([disabled]):hover {
+    background: linear-gradient(45deg, #00bb00, #00ff00); /* Aktif ve hover olunca yeşil */
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+    transform: translateY(-5px);
+  }
+  #accept-button:not([disabled]):active {
+    transform: translateY(1px);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+  }
+  #accept-button[disabled] {
+    opacity: 0.6;
+    background: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* Yeni Bilgi Ekranı */
+  #info-overlay {
+    display: none; /* Başlangıçta gizli */
+  }
+  #info-overlay h2 {
+    font-size: 3em;
+    color: #00ee00;
+    text-shadow: 0 0 10px #00ee00;
+    margin-bottom: 30px;
+  }
+  #controls-content {
+    width: 80%;
+    max-width: 700px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 1.1em;
+    line-height: 1.6;
+    text-align: left;
+    color: #e0e0e0;
+    margin-bottom: 20px;
+    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.3);
+  }
+  #controls-content h3 {
+    color: #00ffff;
+    font-size: 1.5em;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #00ffff;
+    padding-bottom: 5px;
+  }
+  #controls-content p {
+    margin-bottom: 8px;
+  }
+
+  /* Yeni: i Butonu (Bilgi Butonu) */
+  #info-button {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(45deg, #007BFF, #0056b3); /* Mavi renk */
+      color: white;
+      font-size: 2.5em;
+      font-weight: bold;
+      border: 2px solid #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
+      z-index: 150; /* Menülerin üstünde, oyunun altında */
+      transition: all 0.2s ease;
+  }
+  #info-button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 25px rgba(0, 123, 255, 1);
+  }
+  #info-button:active {
+      transform: scale(0.9);
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.4);
+  }
+
+
+  /* Yeni: Oyun Bitiş Ekranı (Win Screen) */
+  #win-screen-overlay {
+    display: none; /* Başlangıçta gizli */
+    background: rgba(0, 0, 0, 0.95);
+  }
+  #win-screen-overlay h1 {
+    font-size: 5em;
+    font-weight: bold;
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+    margin-bottom: 20px;
+  }
+  #win-screen-overlay h2 {
+    font-size: 3em;
+    color: #fff;
+    margin-top: 20px;
+  }
+  #win-screen-overlay p {
+    font-size: 1.8em;
+    color: #00ff00;
+    text-shadow: 0 0 5px #00ff00;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  /* Coin kazanma efekti */
+  .coin-fx {
+    display: inline-block;
+    animation: coinPop 0.5s forwards;
+  }
+  @keyframes coinPop {
+    0% { transform: scale(1); color: #fff; }
+    50% { transform: scale(1.2); color: #ffeb3b; }
+    100% { transform: scale(1); color: #fff; }
+  }
+
+
+  /* Animasyonlar */
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.05); opacity: 1; }
+  }
+
+  @keyframes fadeAndScaleIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+  }
+
+  /* YENİ: Sabit Kuru Kafa Göstergesi Stili */
+  #fixed-kill-indicator {
+    position: absolute;
+    left: 50%;
+    bottom: 25%;
+    transform: translateX(-50%);
+    font-size: 60px;
+    color: #ff4747;
+    text-shadow: 0 0 10px #000, 0 0 20px #000;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+  }
+  
+  /* --- DÜKKAN VE ENVANTER STİLLERİ --- */
+  .shop-container, .inventory-container, .maps-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+      justify-content: center;
+      align-items: center;
+      width: 80%;
+      max-width: 900px;
+  }
+  .item-card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      padding: 20px;
+      width: 250px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      transition: all 0.2s ease-in-out;
+  }
+  .item-card.equipped {
+      border-color: #00ff00;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.7);
+  }
+  .item-card h3 {
+      font-size: 1.8em;
+      color: #00ffff;
+      margin-top: 0;
+  }
+  .item-visual {
+      width: 100%;
+      height: 120px;
+      background: linear-gradient(45deg, #0055ff, #00c3ff);
+      margin: 15px 0;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 3em;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 5px #000;
+  }
+  .item-price {
+      font-size: 1.5em;
+      color: #ffeb3b;
+      margin-bottom: 15px;
+  }
+  .item-card .menu-button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+  }
+  #equip-button-container {
+      margin-top: 15px;
+  }
+  
+  /* --- YÜKSELTME SİSTEMİ İÇİN YENİ EKLENEN STİLLER --- */
+  .upgrade-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 255, 255, 0.3);
+  }
+  .upgrade-section p {
+    margin: 5px 0;
+    font-size: 1.1em;
+  }
+  .upgrade-button {
+    font-size: 1em !important;
+    padding: 8px 15px !important;
+    margin-top: 10px !important;
+  }
+  
+  /* --- MODERN MENÜ STİLLERİ --- */
+  @keyframes animated-gradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+  @keyframes title-float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+  body { background: linear-gradient(-45deg, #0a0f14, #1a2a3a, #0a141f, #2a3a4a); background-size: 400% 400%; animation: animated-gradient 15s ease infinite; }
+  .screen-overlay { background: none; }
+  #main-menu, #beta-login-screen .beta-container /* --- DEĞİŞTİRİLDİ: Beta login ekranı da bu stili kullansın --- */
+  { 
+    background: rgba(10, 25, 40, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 20px; border: 1px solid rgba(0, 255, 255, 0.2); padding: 40px 60px; max-width: 600px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); 
+  }
+  #main-menu h1, #beta-login-screen h2 /* --- DEĞİŞTİRİLDİ --- */
+  {
+     font-size: 5.5em; font-weight: 700; color: #ffffff; text-shadow: 0 0 8px #00ffff, 0 0 20px #00ffff, 0 0 42px #00aaff; margin-bottom: 50px; animation: title-float 4s ease-in-out infinite; 
+  }
+  #beta-login-screen h2 { font-size: 3.5em; } /* --- YENİ EKLENDİ --- */
+  .menu-button, .beta-button /* --- DEĞİŞTİRİLDİ --- */
+  { 
+    background: transparent; border: 2px solid #00ffff; border-radius: 50px; color: #00ffff; font-size: 1.5em; font-weight: 400; padding: 12px 35px; margin: 12px 0; text-transform: uppercase; letter-spacing: 2px; box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(0, 255, 255, 0.3); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+  }
+  .menu-button:hover, .beta-button:hover /* --- DEĞİŞTİRİLDİ --- */
+  { 
+    background: #00ffff; color: #0a141f; box-shadow: 0 0 25px #00ffff, 0 0 50px #00aaff; transform: translateY(-5px) scale(1.05); 
+  }
+  .menu-button:active, .beta-button:active /* --- DEĞİŞTİRİLDİ --- */
+  { 
+    transform: translateY(0px) scale(1); box-shadow: 0 0 10px rgba(0, 255, 255, 0.5); 
+  }
+  #about-button { font-size: 1.2em; padding: 10px 25px; margin-top: 25px; }
+  
+  /* --- YENİ EKLENEN HARİTA EKRANI STİLLERİ --- */
+  .map-card { background: rgba(10, 25, 40, 0.8); border: 3px solid #00aaff; border-radius: 15px; padding: 15px; width: 400px; text-align: center; cursor: pointer; box-shadow: 0 0 20px rgba(0, 170, 255, 0.5); transition: all 0.3s ease; }
+  .map-card:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 170, 255, 0.8); }
+  .map-card.selected { border-color: #00ff00; /* Seçili harita yeşil */ box-shadow: 0 0 35px rgba(0, 255, 0, 0.8); }
+  .map-card img { width: 100%; height: auto; border-radius: 10px; margin-bottom: 10px; }
+  .map-card h3 { font-size: 2em; color: #ffffff; margin: 0; text-shadow: 0 0 5px #000; }
+
+  /* --- YENİ EKLENDİ: VERSİYON GÜNCELLEME BUTONU STİLLERİ --- */
+  #version-update-button {
+    position: absolute;
+    top: 60px; /* Eski versiyon topunun altına */
+    left: 15px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 150;
+    box-shadow: 0 0 15px rgba(255, 65, 108, 0.8);
+    transition: transform 0.2s ease;
+  }
+  #version-update-button:hover {
+    transform: scale(1.1);
+  }
+  #version-update-button .new-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #00ff00;
+    color: #111;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  /* --- YENİ EKLENDİ: GÜNCELLEME NOTLARI EKRANI STİLLERİ --- */
+  #update-notes-overlay .update-content {
+    background: rgba(10, 25, 40, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 30px;
+    width: 80%;
+    max-width: 700px;
+  }
+  #update-notes-overlay h2 {
+    font-size: 3em;
+    color: #ff4b2b;
+    text-shadow: 0 0 10px #ff416c;
+  }
+  #update-notes-overlay ul {
+    list-style: none;
+    padding: 0;
+    font-size: 1.5em;
+    text-align: left;
+    margin: 20px 0;
+  }
+  #update-notes-overlay li {
+    background: rgba(0,0,0,0.3);
+    margin: 10px 0;
+    padding: 15px;
+    border-left: 5px solid #00ff00;
+    border-radius: 5px;
+  }
+  .coming-soon-list {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .coming-soon-list span {
+    background: #555;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1.2em;
+    color: #aaa;
+  }
+
+  /* --- YENİ EKLENDİ: BETA KAYIT VE GİRİŞ EKRANI STİLLERİ --- */
+  #beta-login-screen {
+    z-index: 9999; /* En üstte */
+  }
+  #beta-login-screen input {
+    padding: 15px;
+    font-size: 1.5em;
+    border-radius: 8px;
+    border: 2px solid #00ffff;
+    width: 300px;
+    text-align: center;
+    margin-bottom: 20px;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    letter-spacing: 5px;
+  }
+  #beta-register-button {
+    font-size: 1em;
+    padding: 5px 15px;
+    background: none;
+    border: none;
+    color: #00ffff;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  #beta-login-message {
+    color: #ff4747;
+    height: 20px;
+    font-weight: bold;
+  }
+  #beta-register-screen {
+    background: rgba(245, 245, 245, 0.95);
+    z-index: 10000;
+    color: #333;
+    width: 100%;
+    height: 100%;
+  }
+  #beta-register-container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 600px;
+    height: 80%;
+    max-height: 700px;
+    display: flex;
+    flex-direction: column;
+  }
+  #beta-register-container h2 {
+    color: #1a2a3a;
+    font-size: 2.5em;
+  }
+  #beta-ai-chatbox {
+    flex-grow: 1;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 15px;
+    overflow-y: auto;
+    margin: 20px 0;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chat-bubble {
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 80%;
+    line-height: 1.4;
+  }
+  .chat-bubble.ai {
+    background: #e9e9eb;
+    color: #333;
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+  }
+  .chat-bubble.user {
+    background: #007bff;
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+  }
+  .chat-bubble.ai.code {
+    background: #00ff00;
+    color: #111;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 3px;
+    font-size: 1.2em;
+  }
+  #beta-ai-input-container {
+      display: flex;
+      gap: 10px;
+  }
+  #beta-ai-input {
+    flex-grow: 1;
+    padding: 15px;
+    border-radius: 25px;
+    border: 1px solid #ccc;
+    font-size: 1.1em;
+  }
+  #beta-register-back-button {
+    font-size: 1.2em;
+    padding: 10px 25px;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- --- YENİ EKLENDİ: BETA KAYIT VE GİRİŞ EKRANLARI --- -->
+<div id="beta-login-screen" class="screen-overlay">
+  <div class="beta-container">
+    <h2>BETA SÜRÜMÜ</h2>
+    <p style="margin-bottom: 20px;">Bu bir beta sürümüdür. Kayıtlı mısınız?</p>
+    <input type="text" id="beta-code-input" placeholder="BETA KODU" maxlength="4">
+    <p id="beta-login-message"></p>
+    <button id="beta-login-button" class="beta-button">GİRİŞ YAP</button>
+    <button id="beta-register-button">Kayıt Ol</button>
+  </div>
+</div>
+<div id="beta-register-screen" class="screen-overlay" style="display: none;">
+  <div id="beta-register-container">
+    <h2>Beta Kayıt Asistanı</h2>
+    <div id="beta-ai-chatbox">
+      <div class="chat-bubble ai">Merhaba! Beta programına hoş geldin. Kayıt olmak için sohbete 'kayıt ol' veya 'kod' yazabilirsin.</div>
+    </div>
+    <div id="beta-ai-input-container">
+      <input type="text" id="beta-ai-input" placeholder="Mesajını yaz...">
+    </div>
+    <button id="beta-register-back-button" class="menu-button" style="margin-top: 20px;">GERİ</button>
+  </div>
+</div>
+
+
+<div id="fixed-kill-indicator">💀</div>
+<div id="loading-screen" class="screen-overlay"><h1>GubikGames</h1></div>
+<div id="accept-screen" class="screen-overlay"><h2>Gizlilik Politikası ve Hizmet Şartları</h2><div id="policy-content"><h3>GubikGames Gizlilik Politikası</h3><p>...</p><h3>GubikGames Hizmet Şartları</h3><p>...</p><p style="text-align:center;font-weight:bold;margin-top:30px;">Tüm politikaları okudum ve kabul ediyorum.</p></div><button id="accept-button" class="menu-button" disabled>KABUL ET</button></div>
+
+<div id="main-menu" class="screen-overlay">
+  <h1>GubikGames</h1>
+  <button id="play-button" class="menu-button">OYNA</button>
+  <button id="maps-button" class="menu-button">HARİTALAR</button>
+  <button id="settings-button" class="menu-button">AYARLAR</button>
+  <button id="shop-button" class="menu-button">DÜKKAN</button>
+  <button id="inventory-button" class="menu-button">ENVANTER</button>
+  <button id="promo-menu-button" class="menu-button">PROMOSYON KODU</button>
+  <button id="code-menu-button" class="menu-button">KOD GİR</button>
+  <button id="about-button" class="menu-button">HAKKINDA</button> 
+</div>
+
+<!-- YENİ EKRANLAR -->
+<div id="update-notes-overlay" class="screen-overlay" style="display: none;">
+    <div class="update-content">
+        <h2>VERSİYON 1.8 YENİLİKLERİ</h2>
+        <ul>
+            <li>Silah Düzeltmeleri Yapıldı</li>
+            <li>Lag ve Optimizasyon İyileştirmeleri</li>
+        </ul>
+        <button id="coming-soon-weapons-button" class="menu-button">SİLAHLAR</button>
+        <button id="update-notes-back-button" class="menu-button" style="margin-top: 20px;">GERİ</button>
+    </div>
+</div>
+<div id="coming-soon-weapons-overlay" class="screen-overlay" style="display: none;">
+    <div class="update-content">
+        <h2>ÇOK YAKINDA GELECEK SİLAHLAR</h2>
+        <div class="coming-soon-list">
+            <span>Vandal</span>
+            <span>Phantom</span>
+            <span>Operator</span>
+            <span>Ghost</span>
+        </div>
+        <button id="coming-soon-back-button" class="menu-button" style="margin-top: 40px;">GERİ</button>
+    </div>
+</div>
+
+<div id="maps-overlay" class="screen-overlay" style="display: none;">
+    <h1 style="color: #00ffff; text-shadow: 0 0 10px #00ffff; font-size: 4em;">HARİTA SEÇ</h1>
+    <div class="maps-container"><div class="map-card selected" data-map-id="arazi"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAJgBGADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5qooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigA-/9k=" alt="Arazi Haritası"><h3>ARAZİ</h3></div></div>
+    <button id="maps-back-button" class="menu-button" style="margin-top: 20px;">GERİ</button>
+</div>
+
+<div id="settings-menu" class="screen-overlay"><h2>AYARLAR</h2><div class="setting-category"><h3>GRAFİK KALİTESİ</h3>...</div><div class="setting-category"><h3>FPS SINIRI</h3>...</div><button id="back-button" class="menu-button">GERİ</button></div>
+<div id="shop-overlay" class="screen-overlay" style="display: none;">
+    <h1 style="color: #00ffff; text-shadow: 0 0 10px #00ffff;">DÜKKAN</h1>
+    <p id="shop-message" style="color: #ffeb3b; font-size: 1.5em; height: 30px;"></p>
+    <div class="shop-container">
+        <div class="item-card" data-item-id="blue_gun"><h3>Kristal Silah</h3><div class="item-visual">🔫</div><p class="item-price">200 Coins</p><button id="buy-blue-gun-button" class="menu-button">SATIN AL</button></div>
+        <div class="item-card" data-item-id="red_skin"><h3>Alev Silahı</h3><div class="item-visual" style="background:linear-gradient(45deg, #ff416c, #ff4b2b);">🔫</div><p class="item-price">500 Coins</p><button id="buy-red-skin-button" class="menu-button">SATIN AL</button></div>
+    </div>
+    <button id="shop-back-button" class="menu-button" style="margin-top: 20px;">GERİ</button>
+</div>
+<div id="inventory-overlay" class="screen-overlay" style="display: none;"><h1 style="color: #00ff00; text-shadow: 0 0 10px #00ff00;">ENVANTER</h1><div id="inventory-container" class="inventory-container"></div><button id="inventory-back-button" class="menu-button" style="margin-top: 20px;">GERİ</button></div>
+<div id="promo-code-overlay" class="screen-overlay"><h2>PROMOSYON KODU</h2><input type="text" id="promo-code-input" placeholder="Kodu Buraya Girin"><button id="redeem-promo-button" class="menu-button">KODU KULLAN</button><p id="promo-message"></p><button id="promo-back-button" class="menu-button">GERİ</button></div>
+<div id="cheat-code-overlay" class="screen-overlay"><h2>GubikOS V1.1 - Geliştirici Konsolu</h2><div class="input-line"><span>></span><input type="text" id="cheat-code-input" placeholder="Komut girin..." autofocus></div><div id="terminal-output"></div></div>
+<div id="about-overlay" class="screen-overlay"><h2>GubikGames Hakkında</h2><div id="about-content">...</div><button id="about-back-button" class="menu-button">GERİ</button></div>
+<div id="win-screen-overlay" class="screen-overlay"><h1>TEBRİKLER!</h1><h2>Tüm hedefleri vurdun!</h2><p id="final-score-display">Skor: 0 | Kazanılan Coins: 0</p><button id="win-back-to-menu-button" class="menu-button">ANA MENÜYE DÖN</button></div>
+
+<div id="hud">Mermi: 5 / 5 | Skor: 0</div>
+<div id="crosshair"></div>
+<div id="in-game-title">GubikGames</div>
+<div id="fps-counter">FPS: 0</div>
+<div id="unreal-screen" class="screen-overlay"><h1><span>Unreal Engine 3</span> <span id="unreal-logo"></span></h1></div>
+<div id="currency-display">Coins: <span id="coins-value">0</span> | Diamonds: <span id="diamonds-value">0</span></div>
+
+<div id="version-update-button"><span class="new-badge">NEW</span>1.8v</div>
+<div id="version-display">1.1</div>
+
+<button id="info-button">i</button>
+<div id="info-overlay" class="screen-overlay"><h2>OYUN KONTROLLERİ</h2><div id="controls-content">...</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.umd.min.js"></script>
+
+<script>
+(() => {
+  // UI Elementleri
+  let loadingScreen, acceptScreen, policyContent, acceptButton, unrealScreen;
+  let mainMenu, settingsMenu, playButton, settingsButton, backButton;
+  let hud, crosshair, inGameTitle, fpsCounter; 
+  let graphicsQualityRadios, fpsLimitRadios; 
+  let coinsValueDisplay, diamondsValueDisplay, promoMenuButton, promoCodeOverlay, promoCodeInput, redeemPromoButton, promoMessage, shopButton, promoBackButton, currencyDisplay, winScreenOverlay, finalScoreDisplay, winBackToMenuButton, aboutButton, aboutOverlay, aboutBackButton, versionDisplay;
+  let infoButton, infoOverlay; 
+  let codeMenuButton, cheatCodeOverlay, cheatCodeInput, terminalOutput; 
+  let shopOverlay, shopBackButton, buyBlueGunButton, shopMessage;
+  let inventoryButton, inventoryOverlay, inventoryContainer, inventoryBackButton;
+  let mapsButton, mapsOverlay, mapsBackButton;
+  let versionUpdateButton, updateNotesOverlay, updateNotesBackButton, comingSoonWeaponsButton, comingSoonWeaponsOverlay, comingSoonBackButton;
+  let buyRedSkinButton;
+  let hudElements = [];
+  // --- YENİ EKLENDİ: Beta sistemi için UI elementleri ---
+  let betaLoginScreen, betaCodeInput, betaLoginButton, betaRegisterButton, betaLoginMessage;
+  let betaRegisterScreen, betaAiChatbox, betaAiInput, betaRegisterBackButton;
+
+
+  // Three.js Değişkenleri
+  let scene, camera, renderer;
+  let gameCanvas;
+  let environmentMap;
+  let hemiLight, dirLight; 
+  const bodyPartWorldPos = new THREE.Vector3();
+  let barrelCrystalsGroup;
+  let bulletTrails = [];
+
+  let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+  let playerVelocityY = 0, isGrounded = true;   
+  const jumpForce = 7, gravity = -20, playerHeight = 1.6;
+
+  let prevTime = performance.now(), fpsPrevTime = performance.now(), fpsFrames = 0;
+
+  let pitchObject, yawObject;
+
+  let leftHandGroup, rightHandGroup, gunGroup;
+  let gunSlide, gunFrame, barrel, grip, trigger, magazine, frontSight, rearSight, hammer, safetySwitch;
+  let muzzleFlash, muzzleFlashLight; 
+
+  let triggerMoving = false, triggerPos = 0;
+  const triggerMaxBack = 0.03, triggerSpeed = 0.01;
+
+  let bullets = [], targets = [];
+  let bloodParticles = [], bloodDecals = [];
+
+  let roundScore = 0, roundCoins = 0, totalCoins = 0, totalDiamonds = 0; 
+  
+  let playerInventory = new Set(); 
+  let equippedWeapon = 'default';
+  let weaponLevels = { 'default': 0, 'blue_gun': 0, 'red_skin': 0 };
+  let selectedMap = 'arazi';
+  
+  // --- DEĞİŞTİRİLDİ: 'const' yerine 'let' kullanıldı ---
+  let ammo = 5, maxAmmo = 5;
+  let reloading = false, unlimitedAmmo = false, creativeModeActive = false;
+  let flyUp = false, flyDown = false, aiModeActive = false;
+  let reloadStage = 0, reloadStageStart = 0;
+  let specialReloadStage = 0;
+  
+  const reloadDurationStage1 = 0.6, reloadDurationStage2 = 0.8, reloadDurationStage3 = 0.5, reloadDurationStage4 = 0.4, reloadDurationStage5 = 0.3; 
+
+  let walkCycle = 0, idleSwayTime = 0;
+  const idleSwayMagnitudePos = 0.005, idleSwayMagnitudeRot = 0.005, idleSwaySpeed = 0.5; 
+
+  let recoilActive = false, recoilTime = 0;
+  const recoilDuration = 0.1, recoilMagnitudeY = 0.05, recoilMagnitudeRotX = 0.08; 
+
+  let explosionParticles = [], killIndicatorTimeout;
+
+  const playerSpeed = 10, bulletSpeed = 100, bulletLifeTime = 1; 
+  let currentGraphicsQuality = 'medium', targetFPS = 60;
+  let fpsInterval = 1000 / targetFPS, then = performance.now();
+
+  let instancedGrassMesh = null; 
+  const _dummy = new THREE.Object3D(); 
+  let instanceGrassData = []; 
+
+  const ultraCodeLines = ["Initializing override...", "Setting render_quality to UNBOUND.", "Disabling v-sync...", "Adjusting draw_calls to MAX_BATCH_SIZE.", "Rebuilding spatial_hash_tree.", "Applying shader bypass...", "Expected gain: >100% stable FPS.", "Rendering pipeline re-calibrated."];
+  let usedPromoCodes = new Set();
+
+  function loadGameData() {
+      try {
+          const storedCoins = localStorage.getItem('totalCoins'); if (storedCoins) totalCoins = parseInt(storedCoins, 10);
+          const storedInventory = localStorage.getItem('playerInventory'); if (storedInventory) playerInventory = new Set(JSON.parse(storedInventory));
+          const storedEquipped = localStorage.getItem('equippedWeapon'); if (storedEquipped) equippedWeapon = storedEquipped;
+          const storedUsedCodes = localStorage.getItem('usedPromoCodes'); if (storedUsedCodes) usedPromoCodes = new Set(JSON.parse(storedUsedCodes));
+          const storedLevels = localStorage.getItem('weaponLevels'); if(storedLevels) { weaponLevels = { ...weaponLevels, ...JSON.parse(storedLevels) }; }
+          updateCurrencyDisplay();
+      } catch (e) { console.error("localStorage'dan veri yüklenirken hata:", e); }
+  }
+
+  function saveGameData() {
+      try {
+          localStorage.setItem('totalCoins', totalCoins.toString());
+          localStorage.setItem('playerInventory', JSON.stringify(Array.from(playerInventory)));
+          localStorage.setItem('equippedWeapon', equippedWeapon);
+          localStorage.setItem('usedPromoCodes', JSON.stringify(Array.from(usedPromoCodes)));
+          localStorage.setItem('weaponLevels', JSON.stringify(weaponLevels));
+      } catch(e) { console.error("localStorage'a veri kaydedilirken hata:", e); }
+  }
+
+
+  const aiResponses = {"NEDEN GUBIKGAMES?":"GubikGames, oyuncuları mutlu eden oyunlar sunar.","OYUN NE ZAMAN GÜNCELLENECEK?":"Güncellemeler düzenli olarak yapılacaktır.","TEKNİK DESTEK NASIL ALINIR?":"Web sitemizden bize ulaşabilirsiniz.","KOD GİRMENİN YARARI NEDİR?":"Özel kodlar deneyiminizi geliştirebilir.","FPS NEDİR?":"Saniyedeki Kare Sayısıdır (Frames Per Second).","GRAFİK AYARLARI NE İŞE YARAR?":"Görsel kaliteyi ve performansı etkiler.","PROMOSYON KODU NASIL KULLANILIR?":"Ana menüdeki ilgili bölümden girebilirsiniz.","GUBIKGAMES'İN KURULDUĞU TARİH NEDİR?":"Haziran 2025'te kurulmuştur.","DÜKKAN NE ZAMAN AÇILACAK?":"Dükkan, 1.2 sürümünde açılacaktır."};
+  const flySpeed = 15; 
+  
+  function showFixedKillIndicator() { if (killIndicatorTimeout) clearTimeout(killIndicatorTimeout); document.getElementById('fixed-kill-indicator').style.opacity='1'; killIndicatorTimeout = setTimeout(() => { document.getElementById('fixed-kill-indicator').style.opacity='0'; }, 1000); }
+
+  function showScreen(screenToShow) {
+      document.querySelectorAll('.screen-overlay').forEach(o => { o.style.opacity='0'; o.style.display='none'; });
+      hudElements.forEach(el => { if (el) el.style.display = 'none'; }); 
+      if (gameCanvas) { gameCanvas.style.display = 'none'; gameCanvas.removeEventListener('click', requestGamePointerLock); if (document.pointerLockElement === document.body) document.exitPointerLock(); }
+      const isMenuScreen = [mainMenu, settingsMenu, promoCodeOverlay, shopOverlay, inventoryOverlay, aboutOverlay, infoOverlay, cheatCodeOverlay, mapsOverlay, updateNotesOverlay, comingSoonWeaponsOverlay].includes(screenToShow);
+      if (infoButton) { infoButton.style.display = isMenuScreen ? 'flex' : 'none'; if(isMenuScreen) setTimeout(() => { if (infoButton) infoButton.style.opacity = '1'; }, 10); }
+      if (screenToShow) { 
+          screenToShow.style.display = 'flex'; setTimeout(() => { screenToShow.style.opacity = '1'; }, 10); 
+          if(isMenuScreen) { if (currencyDisplay) currencyDisplay.style.display='block'; if (versionDisplay) versionDisplay.style.display='flex'; setTimeout(() => { if(currencyDisplay)currencyDisplay.style.opacity='1'; if(versionDisplay)versionDisplay.style.opacity='1'; }, 500); }
+      } else {
+          if (currencyDisplay) currencyDisplay.style.opacity = '0'; if (versionDisplay) versionDisplay.style.opacity = '0';
+          setTimeout(() => { if (currencyDisplay) currencyDisplay.style.display = 'none'; if (versionDisplay) versionDisplay.style.display = 'none'; }, 500); 
+      }
+  }
+
+  function startUnrealIntro() { showScreen(unrealScreen); if (unrealScreen) { const h1 = unrealScreen.querySelector('h1'); h1.classList.remove('unrealFadeIn'); void h1.offsetWidth; h1.classList.add('unrealFadeIn'); } setTimeout(() => { showScreen(mainMenu); }, 5000); }
+  function startGubikGamesIntro() {
+    showScreen(null); if (inGameTitle) { inGameTitle.style.display = 'flex'; inGameTitle.classList.remove('fadeInOut'); void inGameTitle.offsetWidth; inGameTitle.classList.add('fadeInOut'); }
+    setTimeout(() => {
+      try { init(); animate(); if (gameCanvas) { gameCanvas.style.display = 'block'; gameCanvas.addEventListener('click', requestGamePointerLock); } else { console.error("Hata: gameCanvas init() sonrası mevcut değil!"); } hudElements.forEach(el => el.style.display = 'block');
+      } catch (e) { console.error("Oyun başlatılırken hata:", e); alert("Oyun başlatılırken hata oluştu."); }
+    }, 3000);
+  }
+
+  function hideLoadingScreenAndShowAcceptScreen() { if (loadingScreen) loadingScreen.style.opacity = '0'; setTimeout(() => { if (loadingScreen) loadingScreen.style.display = 'none'; showScreen(acceptScreen); if (policyContent) policyContent.addEventListener('scroll', checkScrollToBottom); checkScrollToBottom(); }, 500); }
+  function checkScrollToBottom() {
+      if (!policyContent || !acceptButton) return; 
+      const isScrolled = policyContent.scrollTop + policyContent.clientHeight >= policyContent.scrollHeight - 5;
+      acceptButton.disabled = !isScrolled; acceptButton.style.cursor = isScrolled ? 'pointer' : 'not-allowed';
+      acceptButton.style.background = isScrolled ? 'linear-gradient(45deg,#00bb00,#00ff00)' : 'linear-gradient(45deg,#ff0000,#bb0000)';
+  }
+  function appendToTerminal(message,type='default',delay=0) { if (!terminalOutput) return; setTimeout(() => { const p=document.createElement('p'); p.textContent=message; if (type==='error') p.classList.add('error'); else if(type==='info') p.classList.add('info'); else if(type==='command-echo') p.classList.add('command-echo'); terminalOutput.appendChild(p); terminalOutput.scrollTop=terminalOutput.scrollHeight; }, delay); }
+  
+  function renderInventory() {
+    if (!inventoryContainer) return;
+    inventoryContainer.innerHTML = '';
+    const itemsToRender = ['default', ...playerInventory];
+
+    itemsToRender.forEach(itemId => {
+        const isEquipped = equippedWeapon === itemId;
+        const card = document.createElement('div');
+        card.className = `item-card ${isEquipped ? 'equipped' : ''}`;
+        card.dataset.itemId = itemId;
+
+        let title, visualStyle, costMultiplier;
+        if (itemId === 'default') {
+            title = 'Normal Silah';
+            visualStyle = 'background: linear-gradient(45deg, #555, #888);';
+            costMultiplier = 1;
+        } else if (itemId === 'blue_gun') {
+            title = 'Kristal Silah';
+            visualStyle = '';
+            costMultiplier = 1;
+        } else if (itemId === 'red_skin') {
+            title = 'Alev Silahı';
+            visualStyle = 'background: linear-gradient(45deg, #ff416c, #ff4b2b);';
+            costMultiplier = 2;
+        }
+
+        let level = weaponLevels[itemId] || 0;
+        let upgradeCost = (level + 1) * 50 * costMultiplier;
+        let upgradeSectionHTML = `
+            <div class="upgrade-section">
+                <p>Seviye: ${level}</p>
+                ${level < 3 ? `<button class="menu-button upgrade-button" data-cost="${upgradeCost}">YÜKSELT (${upgradeCost} Coins)</button>` : '<p>Maksimum Seviye</p>'}
+            </div>
+        `;
+        
+        card.innerHTML = `<h3>${title}</h3><div class="item-visual" style="${visualStyle}">🔫</div><div id="equip-button-container"><button class="menu-button equip-button">${isEquipped ? 'KUŞANILDI' : 'KUŞAN'}</button></div>${upgradeSectionHTML}`;
+        inventoryContainer.appendChild(card);
+    });
+
+    document.querySelectorAll('.equip-button').forEach(b => b.addEventListener('click', (e) => { const id = e.target.closest('.item-card').dataset.itemId; equippedWeapon = id; saveGameData(); renderInventory(); }));
+    document.querySelectorAll('.upgrade-button').forEach(b => b.addEventListener('click', (e) => { const id = e.target.closest('.item-card').dataset.itemId; const cost = parseInt(e.target.dataset.cost, 10); if(totalCoins >= cost) { totalCoins -= cost; weaponLevels[id]++; saveGameData(); updateCurrencyDisplay(); renderInventory(); } else { alert("Yetersiz Coins!"); } }));
+  }
+
+  // --- YENİ EKLENDİ: Oyunun normal akışını başlatan fonksiyon ---
+  function startGameFlow() {
+      const policyAccepted = localStorage.getItem('policyAccepted');
+      loadGameData(); 
+
+      if (policyAccepted) {
+          showScreen(loadingScreen);
+          setTimeout(() => {
+              if (loadingScreen) loadingScreen.style.opacity = '0';
+              setTimeout(() => {
+                  if (loadingScreen) loadingScreen.style.display = 'none';
+                  startUnrealIntro();
+              }, 500);
+          }, 3000);
+      } else {
+          showScreen(loadingScreen);
+          Promise.all([new Promise(r => setTimeout(r, 3000))]).then(hideLoadingScreenAndShowAcceptScreen);
+      }
+  }
+
+
+  window.addEventListener('DOMContentLoaded', () => {
+    // --- YENİ EKLENDİ: Beta UI elementlerini seçme ---
+    betaLoginScreen = document.getElementById('beta-login-screen');
+    betaCodeInput = document.getElementById('beta-code-input');
+    betaLoginButton = document.getElementById('beta-login-button');
+    betaRegisterButton = document.getElementById('beta-register-button');
+    betaLoginMessage = document.getElementById('beta-login-message');
+    betaRegisterScreen = document.getElementById('beta-register-screen');
+    betaAiChatbox = document.getElementById('beta-ai-chatbox');
+    betaAiInput = document.getElementById('beta-ai-input');
+    betaRegisterBackButton = document.getElementById('beta-register-back-button');
+    
+    // --- ORİJİNAL KOD: Diğer UI elementlerini seçme ---
+    loadingScreen=document.getElementById('loading-screen'); acceptScreen=document.getElementById('accept-screen'); policyContent=document.getElementById('policy-content'); acceptButton=document.getElementById('accept-button'); unrealScreen=document.getElementById('unreal-screen'); mainMenu=document.getElementById('main-menu'); settingsMenu=document.getElementById('settings-menu'); playButton=document.getElementById('play-button'); settingsButton=document.getElementById('settings-button'); backButton=document.getElementById('back-button'); hud=document.getElementById('hud'); crosshair=document.getElementById('crosshair'); inGameTitle=document.getElementById('in-game-title'); fpsCounter=document.getElementById('fps-counter'); hudElements=[hud,crosshair,fpsCounter]; graphicsQualityRadios=document.querySelectorAll('input[name="graphicsQuality"]'); fpsLimitRadios=document.querySelectorAll('input[name="fpsLimit"]'); coinsValueDisplay=document.getElementById('coins-value'); diamondsValueDisplay=document.getElementById('diamonds-value'); promoMenuButton=document.getElementById('promo-menu-button'); promoCodeOverlay=document.getElementById('promo-code-overlay'); promoCodeInput=document.getElementById('promo-code-input'); redeemPromoButton=document.getElementById('redeem-promo-button'); promoMessage=document.getElementById('promo-message'); shopButton=document.getElementById('shop-button'); promoBackButton=document.getElementById('promo-back-button'); currencyDisplay=document.getElementById('currency-display'); winScreenOverlay=document.getElementById('win-screen-overlay'); finalScoreDisplay=document.getElementById('final-score-display'); winBackToMenuButton=document.getElementById('win-back-to-menu-button'); aboutButton=document.getElementById('about-button'); aboutOverlay=document.getElementById('about-overlay'); aboutBackButton=document.getElementById('about-back-button'); versionDisplay=document.getElementById('version-display'); infoButton=document.getElementById('info-button'); infoOverlay=document.getElementById('info-overlay'); codeMenuButton=document.getElementById('code-menu-button'); cheatCodeOverlay=document.getElementById('cheat-code-overlay'); cheatCodeInput=document.getElementById('cheat-code-input'); terminalOutput=document.getElementById('terminal-output'); shopOverlay=document.getElementById('shop-overlay'); shopBackButton=document.getElementById('shop-back-button'); buyBlueGunButton=document.getElementById('buy-blue-gun-button'); shopMessage=document.getElementById('shop-message'); inventoryButton=document.getElementById('inventory-button'); inventoryOverlay=document.getElementById('inventory-overlay'); inventoryContainer=document.getElementById('inventory-container'); inventoryBackButton=document.getElementById('inventory-back-button');
+    mapsButton = document.getElementById('maps-button'); mapsOverlay = document.getElementById('maps-overlay'); mapsBackButton = document.getElementById('maps-back-button');
+    versionUpdateButton = document.getElementById('version-update-button'); updateNotesOverlay = document.getElementById('update-notes-overlay'); updateNotesBackButton = document.getElementById('update-notes-back-button'); comingSoonWeaponsButton = document.getElementById('coming-soon-weapons-button'); comingSoonWeaponsOverlay = document.getElementById('coming-soon-weapons-overlay'); comingSoonBackButton = document.getElementById('coming-soon-back-button');
+    buyRedSkinButton = document.getElementById('buy-red-skin-button');
+
+    // --- YENİ EKLENDİ: Beta Sistemi Olay Dinleyicileri ---
+    betaRegisterButton.addEventListener('click', () => {
+        showScreen(betaRegisterScreen);
+    });
+    betaRegisterBackButton.addEventListener('click', () => {
+        showScreen(betaLoginScreen);
+    });
+    betaLoginButton.addEventListener('click', () => {
+        const savedCode = localStorage.getItem('gubikBetaCode');
+        const enteredCode = betaCodeInput.value;
+        if (!savedCode) {
+            betaLoginMessage.textContent = "Önce kayıt olmalısın!";
+        } else if (savedCode === enteredCode) {
+            betaLoginMessage.textContent = "";
+            showScreen(null); // Her şeyi gizle
+            startGameFlow(); // Oyunun normal akışını başlat
+        } else {
+            betaLoginMessage.textContent = "Geçersiz kod!";
+        }
+    });
+
+    const handleAiChat = () => {
+        const userInput = betaAiInput.value.trim().toLowerCase();
+        if (!userInput) return;
+
+        appendMessageToChat(userInput, 'user');
+        betaAiInput.value = '';
+
+        if (userInput === 'kayıt ol' || userInput === 'kod') {
+            appendMessageToChat('Harika! Kayıt işlemini başlatıyorum...', 'ai');
+            setTimeout(() => {
+                appendMessageToChat('Kayıt işlemi 5 saniye sürecek, lütfen bekle...', 'ai');
+                setTimeout(() => {
+                    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
+                    localStorage.setItem('gubikBetaCode', newCode);
+                    appendMessageToChat(`İşte beta kodun: ${newCode}`, 'ai', 'code');
+                    appendMessageToChat(`Bu kodu not al ve giriş ekranında kullan.`, 'ai');
+                }, 5000);
+            }, 1000);
+        } else {
+             setTimeout(() => {
+                appendMessageToChat("Anlayamadım. Lütfen 'kayıt ol' veya 'kod' yaz.", 'ai');
+             }, 500);
+        }
+    };
+    
+    betaAiInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleAiChat();
+    });
+
+    const appendMessageToChat = (text, sender, type = '') => {
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${sender} ${type}`;
+        bubble.textContent = text;
+        betaAiChatbox.appendChild(bubble);
+        betaAiChatbox.scrollTop = betaAiChatbox.scrollHeight;
+    };
+
+
+    // --- DEĞİŞTİRİLDİ: Oyunun başlangıç mantığı artık beta ekranını gösteriyor ---
+    // Orijinal başlangıç kodu startGameFlow() fonksiyonuna taşındı.
+    showScreen(betaLoginScreen);
+
+
+    // --- ORİJİNAL KOD: Diğer Olay Dinleyicileri (DEĞİŞTİRİLMEDİ) ---
+    if (acceptButton) acceptButton.addEventListener('click', () => { localStorage.setItem('policyAccepted', 'true'); if (policyContent) policyContent.removeEventListener('scroll', checkScrollToBottom); startUnrealIntro(); });
+    if (playButton) playButton.addEventListener('click', startGubikGamesIntro);
+    if (settingsButton) settingsButton.addEventListener('click', () => showScreen(settingsMenu));
+    if (backButton) backButton.addEventListener('click', () => showScreen(mainMenu));
+    if (infoButton) infoButton.addEventListener('click', () => showScreen(infoOverlay.style.display==='flex' ? mainMenu : infoOverlay));
+    graphicsQualityRadios.forEach(r => r.addEventListener('change', (e) => { currentGraphicsQuality=e.target.value; if(scene) applyGraphicsSettings(); }));
+    fpsLimitRadios.forEach(r => r.addEventListener('change', (e) => { targetFPS=(e.target.value==='ultimate')?Infinity:parseInt(e.target.value); fpsInterval=targetFPS===Infinity?0:1000/targetFPS; }));
+    if (promoMenuButton) promoMenuButton.addEventListener('click', () => showScreen(promoCodeOverlay));
+    if (redeemPromoButton) redeemPromoButton.addEventListener('click', () => {
+        const code = promoCodeInput.value.trim().toUpperCase(); let msg="Geçersiz Kod.", clr='#ff0000';
+        if (code === "2400") { if (usedPromoCodes.has(code)) { msg="Kod zaten kullanıldı."; clr='#ff8800'; } else { totalCoins+=200; updateCurrencyDisplay(); usedPromoCodes.add(code); saveGameData(); msg="200 Coins Kazandın!"; clr='#00ff00'; } }
+        else if (code === "9999") { if (usedPromoCodes.has(code)) { msg="Kod zaten kullanıldı."; clr='#ff8800'; } else { totalCoins+=10000; updateCurrencyDisplay(); usedPromoCodes.add(code); saveGameData(); msg="10,000 Coins Kazandın!"; clr='#00ff00'; } }
+        promoMessage.textContent=msg; promoMessage.style.color=clr; promoCodeInput.value=''; setTimeout(() => {promoMessage.textContent='';}, 4000);
+    });
+    if (promoBackButton) promoBackButton.addEventListener('click', () => showScreen(mainMenu));
+    if (mapsButton) mapsButton.addEventListener('click', () => showScreen(mapsOverlay));
+    if (mapsBackButton) mapsBackButton.addEventListener('click', () => showScreen(mainMenu));
+    if (versionUpdateButton) versionUpdateButton.addEventListener('click', () => showScreen(updateNotesOverlay));
+    if (updateNotesBackButton) updateNotesBackButton.addEventListener('click', () => showScreen(mainMenu));
+    if (comingSoonWeaponsButton) comingSoonWeaponsButton.addEventListener('click', () => showScreen(comingSoonWeaponsOverlay));
+    if (comingSoonBackButton) comingSoonBackButton.addEventListener('click', () => showScreen(updateNotesOverlay));
+    if (shopButton) shopButton.addEventListener('click', () => { if(shopMessage) shopMessage.textContent=''; buyBlueGunButton.disabled=playerInventory.has('blue_gun'); buyBlueGunButton.textContent=playerInventory.has('blue_gun')?'SAHİPSİN':'SATIN AL'; buyRedSkinButton.disabled=playerInventory.has('red_skin'); buyRedSkinButton.textContent=playerInventory.has('red_skin')?'SAHİPSİN':'SATIN AL'; showScreen(shopOverlay); });
+    if (shopBackButton) shopBackButton.addEventListener('click', () => showScreen(mainMenu));
+    if (inventoryButton) inventoryButton.addEventListener('click', () => { renderInventory(); showScreen(inventoryOverlay); });
+    if (inventoryBackButton) inventoryBackButton.addEventListener('click', () => showScreen(mainMenu));
+    if (buyBlueGunButton) buyBlueGunButton.addEventListener('click', () => {
+        const price = 200; if(playerInventory.has('blue_gun')) return;
+        if (totalCoins >= price) { totalCoins-=price; playerInventory.add('blue_gun'); updateCurrencyDisplay(); saveGameData(); shopMessage.textContent="Satın alındı!"; buyBlueGunButton.disabled=true; buyBlueGunButton.textContent='SAHİPSİN'; } else { shopMessage.textContent="Yetersiz Bakiye!"; }
+        setTimeout(() => { if (shopMessage) shopMessage.textContent=''; }, 3000);
+    });
+    if (buyRedSkinButton) buyRedSkinButton.addEventListener('click', () => {
+        const price = 500; if(playerInventory.has('red_skin')) return;
+        if (totalCoins >= price) { totalCoins-=price; playerInventory.add('red_skin'); updateCurrencyDisplay(); saveGameData(); shopMessage.textContent="Satın alındı!"; buyRedSkinButton.disabled=true; buyRedSkinButton.textContent='SAHİPSİN'; } else { shopMessage.textContent="Yetersiz Bakiye!"; }
+        setTimeout(() => { if (shopMessage) shopMessage.textContent=''; }, 3000);
+    });
+    if (aboutButton) aboutButton.addEventListener('click', () => showScreen(aboutOverlay));
+    if (aboutBackButton) aboutBackButton.addEventListener('click', () => showScreen(mainMenu));
+    if (winBackToMenuButton) winBackToMenuButton.addEventListener('click', () => { showScreen(mainMenu); resetGame(); });
+    if (codeMenuButton) codeMenuButton.addEventListener('click', () => { showScreen(cheatCodeOverlay); if (terminalOutput) terminalOutput.innerHTML=''; appendToTerminal("GubikOS V1.1 başlatılıyor..."); setTimeout(() => terminalOutput.innerHTML = '', 3000); if (cheatCodeInput) { cheatCodeInput.value=''; cheatCodeInput.focus(); } });
+    if (cheatCodeInput) cheatCodeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') { const cmd=cheatCodeInput.value.trim().toUpperCase(); appendToTerminal(`> ${cheatCodeInput.value}`, 'command-echo'); if (aiModeActive) { if (cmd==="//EXIT AI") { aiModeActive=false; appendToTerminal("AI devredışı.",'info'); } else { appendToTerminal(aiResponses[cmd] || "Anlayamadım."); } } else { switch(cmd){ case"//ULTRA": currentGraphicsQuality='ultra';targetFPS=Infinity;fpsInterval=0;applyGraphicsSettings();appendToTerminal("Optimizasyon Aktif!",'info');break; case"//BACK":showScreen(mainMenu);break; case"//INFINFY":case"//INFINITY":totalCoins=1E5;totalDiamonds=1E5;ammo=1E6;unlimitedAmmo=true;updateCurrencyDisplay();updateHUD();saveGameData();appendToTerminal("Kaynaklar maksimize edildi!",'info');break; case"//AI":aiModeActive=true;appendToTerminal("AI modu aktif.",'info');break; case"//CODE":appendToTerminal("Komutlar: //ULTRA, //INFINFY, //AI, //CREATIVE, //BACK, //CODE",'info');break; case"//CREATIVE":creativeModeActive=true;appendToTerminal("Yaratıcı mod aktif.",'info');break; case"//EXIT CREATIVE":creativeModeActive=false;appendToTerminal("Yaratıcı mod devredışı.",'info');break; default:appendToTerminal("Geçersiz Komut.",'error');break; } } cheatCodeInput.value=''; } });
+  });
+
+  function cleanupScene() {
+    const items = [...bullets, ...targets, ...bloodParticles, ...bloodDecals, ...explosionParticles, ...bulletTrails];
+    items.forEach(item => {
+        if (item && scene) {
+            if (item.children) item.children.forEach(c => { if(c.geometry)c.geometry.dispose(); if(c.material)c.material.dispose(); });
+            if(item.geometry) item.geometry.dispose();
+            if(item.material) item.material.dispose();
+            scene.remove(item);
+        }
+    });
+    bullets = []; targets = []; bloodParticles = []; bloodDecals = []; explosionParticles = []; bulletTrails = [];
+  }
+  function resetGame() {
+    cleanupScene(); 
+    roundScore = 0; roundCoins = 0;
+    
+    if (equippedWeapon === 'blue_gun') { maxAmmo = 10; } 
+    else if (equippedWeapon === 'red_skin') { maxAmmo = 15; } 
+    else { maxAmmo = 5; }
+    ammo = maxAmmo; 
+
+    unlimitedAmmo = false; creativeModeActive = false;
+    if (scene && renderer) { createTargets(getTargetCount()); updateHUD(); updateCurrencyDisplay(); }
+  }
+
+  function init() {
+    if (renderer && renderer.domElement) { if(document.body) document.body.removeChild(renderer.domElement); renderer.dispose(); scene=null; camera=null; }
+    scene=new THREE.Scene(); scene.background=new THREE.Color(0x87ceeb); 
+    camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000); pitchObject=new THREE.Object3D(); yawObject=new THREE.Object3D(); yawObject.position.y=playerHeight; yawObject.add(pitchObject); pitchObject.add(camera); scene.add(yawObject);
+    renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); renderer.setSize(window.innerWidth,window.innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; if(document.body)document.body.appendChild(renderer.domElement); gameCanvas=renderer.domElement; 
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(150,150),new THREE.MeshStandardMaterial({color:0x2e7d32,roughness:1,metalness:0})); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+    createGrass(); createTargets(getTargetCount());
+    hemiLight=new THREE.HemisphereLight(0xffffff,0x444466,1.0); hemiLight.position.set(0,50,0); scene.add(hemiLight);
+    dirLight=new THREE.DirectionalLight(0xffffff,1.0); dirLight.position.set(30,50,30); dirLight.castShadow=true; dirLight.shadow.bias=-0.0005; scene.add(dirLight);
+    const sunMesh=new THREE.Mesh(new THREE.SphereGeometry(2,32,32),new THREE.MeshBasicMaterial({color:0xFFFF00,emissive:0xFFFF00,emissiveIntensity:2})); sunMesh.position.copy(dirLight.position); scene.add(sunMesh);
+    const handMat=new THREE.MeshStandardMaterial({color:0xffd6a5,roughness:0.9,metalness:0.1}); leftHandGroup=new THREE.Group(); rightHandGroup=new THREE.Group();
+    const hGeo=new THREE.BoxGeometry(0.15,0.25,0.1), fGeo=new THREE.BoxGeometry(0.03,0.05,0.03), tGeo=new THREE.BoxGeometry(0.06,0.1,0.06), faGeo=new THREE.BoxGeometry(0.2,0.5,0.2), uaGeo=new THREE.BoxGeometry(0.22,0.6,0.22); 
+    const pl=new THREE.Mesh(hGeo,handMat); pl.castShadow=true; leftHandGroup.add(pl); for(let i=0;i<4;i++){const f=new THREE.Mesh(fGeo,handMat);f.position.set(-0.04+i*0.03,0.12,0.05);f.castShadow=true;leftHandGroup.add(f);} const tl=new THREE.Mesh(tGeo,handMat);tl.position.set(-0.08,0.03,-0.04);tl.rotation.z=Math.PI/4;tl.castShadow=true;leftHandGroup.add(tl); const fal=new THREE.Mesh(faGeo,handMat);fal.position.set(0,-0.35,0);fal.rotation.x=Math.PI/10;fal.castShadow=true;leftHandGroup.add(fal); const ual=new THREE.Mesh(uaGeo,handMat);ual.position.set(0,-0.4,0);ual.rotation.x=Math.PI/20;ual.castShadow=true;fal.add(ual);
+    const pr=new THREE.Mesh(hGeo,handMat); pr.castShadow=true; rightHandGroup.add(pr); for(let i=0;i<4;i++){const f=new THREE.Mesh(fGeo,handMat);f.position.set(0.04-i*0.03,0.12,0.05);f.castShadow=true;rightHandGroup.add(f);} const tr=new THREE.Mesh(tGeo,handMat);tr.position.set(0.08,0.03,-0.04);tr.rotation.z=-Math.PI/4;tr.castShadow=true;rightHandGroup.add(tr); const far=new THREE.Mesh(faGeo,handMat);far.position.set(0,-0.35,0);far.rotation.x=-Math.PI/10;rightHandGroup.add(far); const uar=new THREE.Mesh(uaGeo,handMat);uar.position.set(0,-0.4,0);uar.rotation.x=-Math.PI/20;uar.castShadow=true;far.add(uar);
+    gunGroup=new THREE.Group(); gunGroup.position.set(0.4,-0.48,-0.8); gunGroup.rotation.set(-0.05,0.15,-0.08); pitchObject.add(gunGroup); 
+    rightHandGroup.position.set(0.08,-0.2,0.08); rightHandGroup.rotation.set(-0.05,-0.15,0.25); gunGroup.add(rightHandGroup); 
+    leftHandGroup.position.set(-0.06,0.0,-0.4); leftHandGroup.rotation.set(0.0,0.05,-0.15); gunGroup.add(leftHandGroup); 
+    
+    let isBlueGun = equippedWeapon === 'blue_gun', isRedSkin = equippedWeapon === 'red_skin' && weaponLevels['red_skin'] >= 1;
+    let mainColor = isBlueGun ? 0x0077ff : (isRedSkin ? 0xcc0000 : 0x333333);
+    let barrelColor = isBlueGun ? 0x00aaff : (isRedSkin ? 0xff4444 : 0x222222);
+    let gripColor = isBlueGun ? 0x0044cc : (isRedSkin ? 0x880000 : 0x444444);
+    let magColor = isBlueGun ? 0x3333aa : (isRedSkin ? 0x550000 : 0x555555);
+
+    const gmb=new THREE.MeshStandardMaterial({color:mainColor,metalness:0.7,roughness:0.4}); const gmb2=new THREE.MeshStandardMaterial({color:barrelColor,metalness:0.8,roughness:0.3}); const gmg=new THREE.MeshStandardMaterial({color:gripColor,metalness:0.1,roughness:0.9}); const gmt=new THREE.MeshStandardMaterial({color:0xCC0000,metalness:0.0,roughness:0.7}); const gmm=new THREE.MeshStandardMaterial({color:magColor,metalness:0.6,roughness:0.5}); const gms=new THREE.MeshStandardMaterial({color:0x111111,metalness:0.9,roughness:0.2});
+    gunSlide=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.1,0.6),gmb); gunSlide.position.set(0,0.05,-0.4); gunSlide.castShadow=true; gunGroup.add(gunSlide);
+    gunFrame=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.15,0.65),gmb); gunFrame.position.set(0,-0.05,-0.38); gunFrame.castShadow=true; gunGroup.add(gunFrame);
+    barrel=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,0.2),gmb2); barrel.position.set(0,0.05,-0.6); barrel.castShadow=true; gunGroup.add(barrel);
+    grip=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.35,0.15),gmg); grip.position.set(0,-0.28,-0.1); grip.rotation.x=Math.PI/16; grip.castShadow=true; gunGroup.add(grip);
+    trigger=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.08,0.02),gmt); trigger.position.set(0,-0.1,-0.2); trigger.castShadow=true; gunGroup.add(trigger);
+    magazine=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.25,0.12),gmm); magazine.position.set(0,-0.4,-0.12); magazine.castShadow=true; gunGroup.add(magazine);
+    frontSight=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.05,0.02),gms); frontSight.position.set(0,0.12,-0.62); frontSight.castShadow=true; gunGroup.add(frontSight);
+    rearSight=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.02,0.03),gms); rearSight.position.set(0,0.12,-0.2); rearSight.castShadow=true; gunGroup.add(rearSight);
+    hammer=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.06,0.02),gmb); hammer.position.set(0,0.02,0.0); hammer.castShadow=true; gunGroup.add(hammer);
+    safetySwitch=new THREE.Mesh(new THREE.BoxGeometry(0.015,0.03,0.02),gmt); safetySwitch.position.set(0.1,0.05,-0.1); safetySwitch.castShadow=true; gunGroup.add(safetySwitch);
+    
+    let mfc = isBlueGun ? 0x00FFFF : (equippedWeapon === 'red_skin' && weaponLevels['red_skin']>=3 ? 0xff0000 : 0xFFA500);
+    let mlc = isBlueGun ? 0x00BFFF : (equippedWeapon === 'red_skin' && weaponLevels['red_skin']>=3 ? 0xff4444 : 0xFFD700);
+    const mfGeo=new THREE.ConeGeometry(0.12,0.3,10); mfGeo.translate(0,0.15,0); const mfMat=new THREE.MeshBasicMaterial({color:mfc,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending});
+    muzzleFlash=new THREE.Mesh(mfGeo,mfMat); muzzleFlash.position.set(0,0.05,-0.7); muzzleFlash.rotation.x=Math.PI/2; muzzleFlash.visible=false; gunGroup.add(muzzleFlash);
+    muzzleFlashLight=new THREE.PointLight(mlc,1.0,5,2); muzzleFlashLight.position.set(0,0.05,-0.7); muzzleFlashLight.castShadow=false; muzzleFlashLight.visible=false; gunGroup.add(muzzleFlashLight);
+    
+    if (isBlueGun && weaponLevels['blue_gun'] >= 2) {
+        barrelCrystalsGroup = new THREE.Group();
+        const cGeo = new THREE.IcosahedronGeometry(0.05, 0);
+        const cMat = new THREE.MeshStandardMaterial({color: 0x00ffff, emissive: 0x00aaff, emissiveIntensity: 1, roughness: 0.1, metalness: 0.5});
+        for (let i=0; i<10; i++) { const c=new THREE.Mesh(cGeo,cMat), a=(i/10)*Math.PI*2; c.position.set(Math.cos(a)*0.15,Math.sin(a)*0.15,0); barrelCrystalsGroup.add(c); }
+        barrel.add(barrelCrystalsGroup);
+    }
+
+    document.addEventListener('pointerlockchange', pointerLockChangeHandler, false);
+    document.addEventListener('mousemove', onMouseMove, false);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    document.addEventListener('mousedown', (e) => { if(e.button === 0) fireGun(); });
+    resetGame(); updateHUD(); applyGraphicsSettings(); 
+  }
+
+  function createGrass() {
+      if (instancedGrassMesh) { scene.remove(instancedGrassMesh); instancedGrassMesh.geometry.dispose(); instancedGrassMesh.material.dispose(); instancedGrassMesh=null; }
+      instanceGrassData=[]; const count=getGrassBladeCount(); const geo=new THREE.PlaneGeometry(0.1,0.5); const mat=new THREE.MeshStandardMaterial({color:0x689F38,roughness:0.8,side:THREE.DoubleSide});
+      instancedGrassMesh=new THREE.InstancedMesh(geo,mat,count); instancedGrassMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); instancedGrassMesh.receiveShadow=true;
+      for (let i=0; i<count; i++) {
+          _dummy.position.set((Math.random()-0.5)*150,0.25,(Math.random()-0.5)*150); _dummy.rotation.set(Math.PI/2,(Math.random()-0.5)*0.2,Math.random()*Math.PI*2); _dummy.scale.set(1,0.8+Math.random()*0.4,1);
+          instanceGrassData.push({ position:_dummy.position.clone(), rotation:_dummy.rotation.clone(), scale:_dummy.scale.clone(), swayOffset:Math.random()*Math.PI*2, initialRotationY:_dummy.rotation.y });
+          _dummy.updateMatrix(); instancedGrassMesh.setMatrixAt(i,_dummy.matrix);
+      }
+      instancedGrassMesh.instanceMatrix.needsUpdate=true; scene.add(instancedGrassMesh);
+  }
+  function updateGrassSway() {
+      if (!instancedGrassMesh) return; const now=performance.now(); const rot=new THREE.Euler();
+      for (let i=0; i<instanceGrassData.length; i++) {
+          const d=instanceGrassData[i]; const sway=Math.sin(now*0.0005+d.swayOffset)*0.05;
+          rot.copy(d.rotation); rot.y=d.initialRotationY+sway;
+          _dummy.position.copy(d.position); _dummy.rotation.copy(rot); _dummy.scale.copy(d.scale);
+          _dummy.updateMatrix(); instancedGrassMesh.setMatrixAt(i,_dummy.matrix);
+      }
+      instancedGrassMesh.instanceMatrix.needsUpdate=true;
+  }
+  function getGrassBladeCount() { const c={low:1000,medium:5000,high:10000,ultra:20000}; return c[currentGraphicsQuality]||5000; }
+  function getShadowMapSize() { const s={low:512,medium:1024,high:2048,ultra:4096}; return s[currentGraphicsQuality]||1024; }
+  function getTargetCount() { const c={low:5,medium:10,high:15,ultra:20}; return c[currentGraphicsQuality]||10; }
+  function applyGraphicsSettings() {
+      if(!renderer||!scene||!dirLight) return; createGrass(); const newSize=getShadowMapSize();
+      if(dirLight.shadow.mapSize.width!==newSize) { dirLight.shadow.mapSize.width=newSize; dirLight.shadow.mapSize.height=newSize; if(dirLight.shadow.map)dirLight.shadow.map.dispose(); dirLight.shadow.map=null; renderer.shadowMap.needsUpdate=true; }
+      const newCount=getTargetCount(); if(targets.length!==newCount) { resetGame(); }
+      renderer.setPixelRatio(window.devicePixelRatio/(currentGraphicsQuality==='low'?2:1));
+  }
+  function requestGamePointerLock() { if (document.body) document.body.requestPointerLock(); }
+  function pointerLockChangeHandler() { if (document.body) document.body.style.cursor = (document.pointerLockElement === document.body) ? 'none' : 'crosshair'; }
+  
+  function startCrystalDeathAnimation(enemy) {
+    const crystalGeo = new THREE.OctahedronGeometry(2, 1);
+    const crystalMat = new THREE.MeshStandardMaterial({color:0x00aaff, emissive:0x0055aa, roughness:0.2, metalness:0.8, transparent:true, opacity: 0.7});
+    const deathCrystal = new THREE.Mesh(crystalGeo, crystalMat);
+    deathCrystal.position.copy(enemy.position); deathCrystal.position.y += 20;
+    scene.add(deathCrystal);
+    new TWEEN.Tween(deathCrystal.position).to({ y: enemy.position.y }, 500).easing(TWEEN.Easing.Bounce.Out).onComplete(() => { if(scene) scene.remove(enemy); const index=targets.indexOf(enemy); if(index > -1) targets.splice(index, 1); new TWEEN.Tween(deathCrystal.material).to({opacity: 0}, 1000).onComplete(() => { if(scene) scene.remove(deathCrystal); deathCrystal.geometry.dispose(); deathCrystal.material.dispose(); }).start(); }).start();
+  }
+  function startDeathAnimation(enemy) { new TWEEN.Tween(enemy.rotation).to({ x:-Math.PI/2, z:(Math.random()-0.5)*2 }, 1000).easing(TWEEN.Easing.Bounce.Out).onComplete(() => { setTimeout(() => { if (scene) scene.remove(enemy); enemy.children.forEach(c => { if(c.geometry)c.geometry.dispose(); if(c.material)c.material.dispose(); }); const i=targets.indexOf(enemy); if (i>-1) targets.splice(i,1); }, 2000); }).start(); }
+  function startHourglassDeathAnimation(enemy) {
+      const hourglassGroup = new THREE.Group();
+      const glassMat = new THREE.MeshStandardMaterial({color: 0xffffaa, transparent: true, opacity: 0.5, roughness: 0.1});
+      const frameMat = new THREE.MeshStandardMaterial({color: 0x8B4513});
+      const topCone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1, 8), glassMat); topCone.position.y = 0.5;
+      const bottomCone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1, 8), glassMat); bottomCone.position.y = -0.5; bottomCone.rotation.x = Math.PI;
+      for(let i=0; i<4; i++) {
+          const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 8), frameMat);
+          const angle = (i/4) * Math.PI * 2;
+          pillar.position.set(Math.cos(angle)*0.5, 0, Math.sin(angle)*0.5);
+          hourglassGroup.add(pillar);
+      }
+      hourglassGroup.add(topCone, bottomCone);
+      hourglassGroup.scale.set(2,2,2);
+      hourglassGroup.position.copy(enemy.position); hourglassGroup.position.y += 20;
+      scene.add(hourglassGroup);
+      if(scene) scene.remove(enemy); const index = targets.indexOf(enemy); if(index > -1) targets.splice(index, 1);
+      new TWEEN.Tween(hourglassGroup.position).to({ y: enemy.position.y + 1 }, 500).easing(TWEEN.Easing.Bounce.Out).onComplete(() => {
+          setTimeout(() => { new TWEEN.Tween(hourglassGroup.scale).to({x:0, y:0, z:0}, 500).onComplete(() => { if(scene) scene.remove(hourglassGroup); }).start(); }, 1500);
+      }).start();
+  }
+  
+  function createTargets(count) {
+    for(let i=0;i<count;i++) {
+      const g=new THREE.Group(), mat=new THREE.MeshStandardMaterial({color:0xff4444,metalness:0.5,roughness:0.4}), hMat=new THREE.MeshStandardMaterial({color:0xff6666,metalness:0.5,roughness:0.4});
+      const h=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5),hMat); h.position.y=1.5; h.userData.part='head'; h.castShadow=true; g.add(h);
+      const t=new THREE.Mesh(new THREE.BoxGeometry(0.8,1.2,0.4),mat); t.position.y=0.6; t.userData.part='torso'; t.castShadow=true; g.add(t);
+      const aGeo=new THREE.BoxGeometry(0.2,1.0,0.2); const la=new THREE.Mesh(aGeo,mat); la.position.set(-0.5,0.7,0); la.userData.part='arm'; la.castShadow=true; g.add(la); const ra=new THREE.Mesh(aGeo,mat); ra.position.set(0.5,0.7,0); ra.userData.part='arm'; ra.castShadow=true; g.add(ra);
+      const lGeo=new THREE.BoxGeometry(0.3,1.0,0.3); const ll=new THREE.Mesh(lGeo,mat); ll.position.set(-0.25,-0.5,0); ll.userData.part='leg'; ll.castShadow=true; g.add(ll); const rl=new THREE.Mesh(lGeo,mat); rl.position.set(0.25,-0.5,0); rl.userData.part='leg'; rl.castShadow=true; g.add(rl);
+      g.position.set((Math.random()-0.5)*80,1.0,(Math.random()-0.5)*80);
+      g.userData.health=3; g.userData.isDying=false;
+      scene.add(g); targets.push(g);
+    }
+  }
+  function createBloodEffect(position) { const pCount=15, pGeo=new THREE.SphereGeometry(0.04,4,4); for(let i=0;i<pCount;i++){ const pMat=new THREE.MeshBasicMaterial({color:0xaa0000}),p=new THREE.Mesh(pGeo,pMat); p.position.copy(position); const v=new THREE.Vector3((Math.random()-0.5)*3,Math.random()*3,(Math.random()-0.5)*3); p.userData={velocity:v,startTime:performance.now()/1000,lifetime:0.8}; scene.add(p); bloodParticles.push(p); }}
+  function createBloodDecal(position) { const dGeo=new THREE.PlaneGeometry(0.5,0.5),dMat=new THREE.MeshBasicMaterial({color:0x880000,transparent:true,opacity:0.7,side:THREE.DoubleSide}); const d=new THREE.Mesh(dGeo,dMat); d.position.set(position.x,0.01,position.z); d.rotation.x=-Math.PI/2; d.rotation.z=Math.random()*Math.PI*2; scene.add(d); bloodDecals.push(d); }
+  function onKeyDown(event) {
+    if (document.pointerLockElement !== document.body) return; 
+    switch(event.code) {
+      case 'KeyW': case 'ArrowUp': moveForward = true; break;
+      case 'KeyS': case 'ArrowDown': moveBackward = true; break;
+      case 'KeyA': case 'ArrowLeft': moveLeft = true; break;
+      case 'KeyD': case 'ArrowRight': moveRight = true; break;
+      case 'Space': if(creativeModeActive){flyUp=true;playerVelocityY=flySpeed;}else if(isGrounded){playerVelocityY=jumpForce;isGrounded=false;} break;
+      case 'ShiftLeft': case 'ShiftRight': if(creativeModeActive){flyDown=true;playerVelocityY=-flySpeed;} break;
+      case 'KeyR': startReload(); break;
+    }
+  }
+  function onKeyUp(event) {
+    if (document.pointerLockElement !== document.body) return; 
+    switch(event.code) {
+      case 'KeyW': case 'ArrowUp': moveForward = false; break;
+      case 'KeyS': case 'ArrowDown': moveBackward = false; break;
+      case 'KeyA': case 'ArrowLeft': moveLeft = false; break;
+      case 'KeyD': case 'ArrowRight': moveRight = false; break;
+      case 'Space': if(creativeModeActive){flyUp=false;if(!flyDown)playerVelocityY=0;} break;
+      case 'ShiftLeft': case 'ShiftRight': if(creativeModeActive){flyDown=false;if(!flyUp)playerVelocityY=0;} break;
+    }
+  }
+  function onMouseMove(event) { if (document.pointerLockElement !== document.body) return; yawObject.rotation.y -= event.movementX*0.002; pitchObject.rotation.x -= event.movementY*0.002; pitchObject.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitchObject.rotation.x)); }
+  function fireGun() {
+    if (document.pointerLockElement !== document.body || reloading || (!unlimitedAmmo && ammo <= 0)) return;
+    if (!unlimitedAmmo) {
+        let hasSpecialAmmo = false;
+        if (equippedWeapon === 'blue_gun' && weaponLevels['blue_gun'] >= 2 && barrelCrystalsGroup) {
+            if(barrelCrystalsGroup.children.some(c => c.visible)) hasSpecialAmmo = true;
+        }
+        if (!hasSpecialAmmo) {
+            ammo--;
+        }
+    }
+    if (equippedWeapon === 'blue_gun' && weaponLevels['blue_gun'] >= 2 && barrelCrystalsGroup) {
+        for (let i = barrelCrystalsGroup.children.length - 1; i >= 0; i--) {
+            const crystal = barrelCrystalsGroup.children[i];
+            if (crystal.visible) { crystal.visible = false; break; }
+        }
+    }
+    
+    updateHUD(); recoilActive=true; recoilTime=0;
+    if (muzzleFlash && muzzleFlashLight) { muzzleFlash.visible = true; muzzleFlashLight.visible = true; new TWEEN.Tween(muzzleFlash.scale).to({x:1.5,y:1.5,z:1.5},50).onComplete(()=>new TWEEN.Tween(muzzleFlash.scale).to({x:0.1,y:0.1,z:0.1},100).onComplete(()=>muzzleFlash.visible=false).start()).start(); new TWEEN.Tween(muzzleFlashLight).to({intensity:0},150).onComplete(()=>{muzzleFlashLight.visible=false;muzzleFlashLight.intensity=1.0}).start(); }
+    let geo, mat;
+    if (equippedWeapon==='blue_gun') { geo=new THREE.OctahedronGeometry(0.08,0); mat=new THREE.MeshStandardMaterial({color:0x00ffff,emissive:0x00ffff,emissiveIntensity:3,roughness:0.1,metalness:0.5,transparent:true,opacity:0.8}); }
+    else if (equippedWeapon==='red_skin' && weaponLevels['red_skin'] >= 2) { geo=new THREE.BoxGeometry(0.1,0.1,0.1); mat=new THREE.MeshStandardMaterial({color: 0xff4444, emissive: 0xaa0000, roughness: 0.8}); }
+    else { geo=new THREE.SphereGeometry(0.05,8,8); mat=new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xffff00,emissiveIntensity:3}); }
+    const bullet = new THREE.Mesh(geo, mat);
+    const startPos = new THREE.Vector3(); barrel.getWorldPosition(startPos); bullet.position.copy(startPos);
+    const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+    bullet.userData = { velocity: dir.normalize().multiplyScalar(bulletSpeed), startTime: performance.now()/1000, hasTrail: ((equippedWeapon==='blue_gun' && weaponLevels['blue_gun']>=3) || (equippedWeapon==='red_skin' && weaponLevels['red_skin']>=3)) };
+    bullet.castShadow = true; scene.add(bullet); bullets.push(bullet);
+  }
+  function startReload() { if(unlimitedAmmo){ammo=maxAmmo;updateHUD();return;}if(reloading||ammo===maxAmmo)return;reloading=true;if(equippedWeapon==='blue_gun'&&weaponLevels['blue_gun']>=1){specialReloadStage=1;}else{reloadStage=1;}reloadStageStart=performance.now()/1000;}
+  function updateReloadAnim() { if(!reloading || !magazine || !gunGroup)return;const now=performance.now()/1000,elapsed=now-reloadStageStart,rot=new THREE.Euler(-0.05,0.15,-0.08);if(specialReloadStage>0){const d=2.0;if(elapsed<d){const t=elapsed/d;gunGroup.rotation.y=rot.y+Math.sin(t*Math.PI*4)*0.5;gunGroup.rotation.z=rot.z+Math.sin(t*Math.PI)*0.5;}else{gunGroup.rotation.copy(rot);reloading=false;specialReloadStage=0;ammo=maxAmmo;updateHUD();if(barrelCrystalsGroup)barrelCrystalsGroup.children.forEach(c=>c.visible=true);}return;}switch(reloadStage){case 1:if(elapsed<reloadDurationStage1){magazine.position.y=THREE.MathUtils.lerp(-0.4,-0.6,elapsed/reloadDurationStage1);gunGroup.rotation.y=THREE.MathUtils.lerp(rot.y,rot.y+0.1,elapsed/reloadDurationStage1);}else{magazine.visible=false;reloadStage=2;reloadStageStart=now;}break;case 2:if(elapsed<reloadDurationStage2){magazine.visible=true;magazine.position.y=THREE.MathUtils.lerp(0.0,-0.4,elapsed/reloadDurationStage2);gunGroup.rotation.y=THREE.MathUtils.lerp(rot.y+0.1,rot.y,elapsed/reloadDurationStage2);}else{magazine.position.y=-0.4;gunGroup.rotation.copy(rot);reloadStage=3;reloadStageStart=now;}break;case 3:if(elapsed<reloadDurationStage3){gunSlide.position.z=THREE.MathUtils.lerp(-0.4,-0.25,elapsed/reloadDurationStage3);}else{gunSlide.position.z=-0.25;reloadStage=4;reloadStageStart=now;}break;case 4:if(elapsed<reloadDurationStage4){gunSlide.position.z=THREE.MathUtils.lerp(-0.25,-0.4,elapsed/reloadDurationStage4);}else{gunSlide.position.z=-0.4;reloadStage=5;reloadStageStart=now;}break;case 5:if(elapsed>reloadDurationStage5){trigger.position.z=-0.2;reloading=false;ammo=maxAmmo;updateHUD();if(barrelCrystalsGroup)barrelCrystalsGroup.children.forEach(c=>c.visible=true);}break;}}
+  function updateHUD(){if(hud)hud.textContent=`Mermi: ${unlimitedAmmo?"SINIRSIZ":ammo+"/"+maxAmmo} | Skor: ${roundScore} | Kazanılan: ${roundCoins} Coins`;}
+  function animateCoinDisplay(){if(coinsValueDisplay){coinsValueDisplay.classList.add('coin-fx');setTimeout(()=>{if(coinsValueDisplay)coinsValueDisplay.classList.remove('coin-fx');},500);}}
+  function updateCurrencyDisplay(){if(coinsValueDisplay)coinsValueDisplay.textContent=totalCoins;if(diamondsValueDisplay)diamondsValueDisplay.textContent=totalDiamonds;}
+
+  function animate() {
+    requestAnimationFrame(animate); TWEEN.update(); 
+    const now=performance.now(), delta=(now-prevTime)/1000;
+    fpsFrames++; if (now-fpsPrevTime>=1000) { if(fpsCounter)fpsCounter.textContent=`FPS: ${fpsFrames}`; fpsFrames=0; fpsPrevTime=now; }
+    if (targetFPS!==Infinity) { const elapsed=now-then; if (elapsed<fpsInterval) return; then=now-(elapsed%fpsInterval); }
+    prevTime = now; updateGrassSway(); 
+    const moveSpeed = playerSpeed*delta;
+    if (document.pointerLockElement===document.body && yawObject) {
+      if(creativeModeActive) { yawObject.position.y+=playerVelocityY*delta; }
+      else { playerVelocityY+=gravity*delta; yawObject.position.y+=playerVelocityY*delta; if (yawObject.position.y<playerHeight) { yawObject.position.y=playerHeight; playerVelocityY=0; isGrounded=true; } else { isGrounded=false; } }
+      if(moveForward)yawObject.translateZ(-moveSpeed); if(moveBackward)yawObject.translateZ(moveSpeed); if(moveLeft)yawObject.translateX(-moveSpeed); if(moveRight)yawObject.translateX(moveSpeed);
+    }
+    const initGunPos=new THREE.Vector3(0.4,-0.48,-0.8),initGunRot=new THREE.Euler(-0.05,0.15,-0.08); 
+    if(reloading||recoilActive) { if(recoilActive&&gunGroup){recoilTime+=delta;let t=Math.min(recoilTime/recoilDuration,1);gunGroup.position.y=initGunPos.y+Math.sin(t*Math.PI)*recoilMagnitudeY;gunGroup.rotation.x=initGunRot.x+Math.sin(t*Math.PI)*recoilMagnitudeRotX;if(t>=1)recoilActive=false;} }
+    else if(moveForward||moveBackward||moveLeft||moveRight){walkCycle+=delta*14;if(gunGroup){gunGroup.position.y=initGunPos.y+Math.sin(walkCycle)*0.01;gunGroup.position.x=initGunPos.x+Math.sin(walkCycle*2)*0.005;}}
+    else{idleSwayTime+=delta*idleSwaySpeed;if(gunGroup){gunGroup.position.x=THREE.MathUtils.lerp(gunGroup.position.x,initGunPos.x+Math.sin(idleSwayTime)*idleSwayMagnitudePos,0.1);gunGroup.position.y=THREE.MathUtils.lerp(gunGroup.position.y,initGunPos.y+Math.cos(idleSwayTime*0.7)*idleSwayMagnitudePos,0.1);gunGroup.rotation.x=THREE.MathUtils.lerp(gunGroup.rotation.x,initGunRot.x+Math.sin(idleSwayTime*0.8)*idleSwayMagnitudeRot,0.1);gunGroup.rotation.y=THREE.MathUtils.lerp(gunGroup.rotation.y,initGunRot.y+Math.cos(idleSwayTime*0.9)*idleSwayMagnitudeRot,0.1);}}
+    if(barrelCrystalsGroup) { barrelCrystalsGroup.rotation.z += delta * 5; barrelCrystalsGroup.children.forEach((c,i)=>{const a=(i/10)*Math.PI*2;c.position.x=Math.cos(a+idleSwayTime*2)*0.15;c.position.y=Math.sin(a+idleSwayTime*2)*0.15;}); }
+    const currentTime=now/1000;
+    for(let i=bullets.length-1;i>=0;i--){
+      const b=bullets[i];if(!b)continue;b.position.addScaledVector(b.userData.velocity,delta);
+      if(b.userData.hasTrail) {
+          const trailColor = (equippedWeapon === 'red_skin') ? 0xff4444 : 0x00ffff;
+          const trail=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.5), new THREE.MeshBasicMaterial({color:trailColor,transparent:true,side:THREE.DoubleSide}));
+          trail.position.copy(b.position); trail.lookAt(camera.position); trail.userData={startTime:currentTime,lifetime:0.3};
+          scene.add(trail); bulletTrails.push(trail);
+      }
+      if(currentTime-b.userData.startTime>bulletLifeTime){if(scene)scene.remove(b);b.geometry.dispose();b.material.dispose();bullets.splice(i,1);continue;}
+      let hit=false;
+      for(let j=targets.length-1;j>=0;j--){
+        const e=targets[j];if(!e||e.userData.isDying)continue;
+        for(const part of e.children){
+          part.getWorldPosition(bodyPartWorldPos);
+          if(b.position.distanceTo(bodyPartWorldPos)<part.geometry.parameters.width*0.8){
+            createBloodEffect(bodyPartWorldPos);createBloodDecal(bodyPartWorldPos);
+            let dmg=0;switch(part.userData.part){case'head':dmg=3;break;case'torso':dmg=1.5;break;case'arm':dmg=1.5;break;case'leg':dmg=1;break;}
+            e.userData.health-=dmg;
+            if(scene)scene.remove(b);b.geometry.dispose();b.material.dispose();bullets.splice(i,1);hit=true;
+            if(e.userData.health<=0){
+              e.userData.isDying=true;
+              if (equippedWeapon==='red_skin' && weaponLevels['red_skin']>=3) { startHourglassDeathAnimation(e); }
+              else if (equippedWeapon==='blue_gun' && weaponLevels['blue_gun']>=3) { startCrystalDeathAnimation(e); } 
+              else { startDeathAnimation(e); }
+              roundScore++;roundCoins+=15;updateHUD();showFixedKillIndicator();
+              if(targets.filter(t=>!t.userData.isDying).length===0)showWinScreen();
+            }
+            break;
+          }
+        }
+        if(hit)break;
+      }
+    }
+    for(let i=bloodParticles.length-1;i>=0;i--){const p=bloodParticles[i];p.userData.velocity.y-=gravity*delta*-0.5;p.position.addScaledVector(p.userData.velocity,delta);if(currentTime-p.userData.startTime>p.userData.lifetime){if(scene)scene.remove(p);p.geometry.dispose();p.material.dispose();bloodParticles.splice(i,1);}}
+    for (let i=explosionParticles.length-1;i>=0;i--) { const p=explosionParticles[i];p.position.addScaledVector(p.userData.velocity,delta);p.material.opacity=1-(currentTime-p.userData.startTime)/p.userData.lifetime; if(p.material.opacity<=0){if(scene)scene.remove(p);p.geometry.dispose();p.material.dispose();explosionParticles.splice(i,1);}}
+    for(let i=bulletTrails.length-1; i>=0; i--) { const t=bulletTrails[i]; t.material.opacity = 1 - (currentTime-t.userData.startTime)/t.userData.lifetime; if(t.material.opacity<=0){if(scene)scene.remove(t);t.geometry.dispose();t.material.dispose();bulletTrails.splice(i,1);} }
+    updateReloadAnim();
+    if(renderer&&scene&&camera)renderer.render(scene,camera); 
+  }
+
+  function createExplosion(pos,col){ const c=20,g=new THREE.SphereGeometry(0.05,8,8),b=new THREE.Color(col); for(let i=0;i<c;i++){ const m=new THREE.MeshBasicMaterial({color:b.clone().offsetHSL(Math.random()*0.2-0.1,0,0),transparent:true,opacity:1,blending:THREE.AdditiveBlending}); const p=new THREE.Mesh(g,m); p.position.copy(pos); const d=new THREE.Vector3((Math.random()-0.5),(Math.random()-0.5),(Math.random()-0.5)).normalize(); p.userData={velocity:d.multiplyScalar(Math.random()*3),startTime:performance.now()/1000,lifetime:1.0}; if(scene)scene.add(p); explosionParticles.push(p);}}
+  function showWinScreen() { hudElements.forEach(el => el.style.display='none'); if(document.pointerLockElement)document.exitPointerLock(); totalCoins+=roundCoins; saveGameData(); updateCurrencyDisplay(); animateCoinDisplay(); showScreen(winScreenOverlay); if(finalScoreDisplay)finalScoreDisplay.textContent=`Skor:${roundScore} | Kazanılan Coins:${roundCoins}`; }
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Umut Talha'nın Gözünden</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+        
+        #blocker { position: absolute; width: 100%; height: 100%; background-color: rgba(0,0,0,0); cursor: pointer; }
+        #instructions { display: none; }
+
+        #dialogue-box { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; padding: 10px 20px; font-family: 'Helvetica', sans-serif; font-size: 22px; text-shadow: 2px 2px 4px #000000; text-align: center; display: none; }
+        #fade-overlay { position: absolute; width: 100%; height: 100%; background-color: #000; top: 0; left: 0; opacity: 0; pointer-events: none; transition: opacity 1.5s; }
+
+        #joystick-container { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; background-color: rgba(128, 128, 128, 0.3); border-radius: 50%; display: none; }
+        #joystick-stick { position: absolute; width: 60px; height: 60px; background-color: rgba(255, 255, 255, 0.5); border-radius: 50%; left: 30px; top: 30px; }
+        #fps-counter { position: absolute; top: 10px; left: 10px; color: lime; font-family: monospace; font-size: 20px; text-shadow: 1px 1px 2px black; pointer-events: none; }
+
+        #settings-button { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; background-color: rgba(0, 0, 0, 0.5); color: white; font-size: 28px; text-align: center; line-height: 40px; border-radius: 50%; cursor: pointer; z-index: 100; }
+        #settings-panel { position: absolute; top: 60px; right: 10px; width: 200px; background-color: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 10px; color: white; font-family: sans-serif; display: none; z-index: 99; }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .setting-item button, #joystick-toggle { padding: 5px 10px; border: 1px solid white; background-color: transparent; color: white; cursor: pointer; }
+        .setting-item button.active { background-color: white; color: black; }
+        #joystick-toggle.off { background-color: #555; }
+
+        #splash-screen { position: absolute; width: 100%; height: 100%; background-color: #000; display: flex; justify-content: center; align-items: center; z-index: 200; opacity: 1; transition: opacity 1s ease-out 3s; }
+        #splash-text { color: white; font-family: 'Courier New', Courier, monospace; font-size: 5vw; animation: spinAndGrow 4s forwards; }
+        @keyframes spinAndGrow { 0% { transform: scale(0) rotate(0deg); opacity: 0; } 50% { transform: scale(1.2) rotate(360deg); opacity: 1; } 100% { transform: scale(1) rotate(360deg); opacity: 1; } }
+
+        /* YENİ EKLENDİ: Geri Sayım Ekranı için CSS stilleri */
+        #countdown-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            z-index: 150;
+            display: none; /* Başlangıçta gizli */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        #play-button {
+            padding: 15px 40px;
+            font-size: 24px;
+            color: white;
+            background-color: #1a1a1a;
+            border: 2px solid #555;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #timer {
+            font-size: 20px;
+            color: #aaa;
+            margin-bottom: 50px;
+        }
+        #coming-soon {
+            position: absolute;
+            bottom: 20px;
+            font-size: 16px;
+            color: #888;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="splash-screen">
+        <div id="splash-text">Gubik Games</div>
+    </div>
+
+    <!-- YENİ EKLENDİ: Geri Sayım Ekranı için HTML elementleri -->
+    <div id="countdown-screen">
+        <button id="play-button">Oyna</button>
+        <div id="timer"></div>
+        <div id="coming-soon">Yeni Oyun: Çok Yakında</div>
+    </div>
+
+    <div id="blocker">
+        <div id="instructions">Lütfen telefonu yatay çevirin.</div>
+    </div>
+    <div id="dialogue-box"></div>
+    <div id="fade-overlay"></div>
+    <div id="joystick-container">
+        <div id="joystick-stick"></div>
+    </div>
+    <div id="fps-counter"></div>
+
+    <div id="settings-button">&#9881;</div>
+    <div id="settings-panel">
+        <div class="setting-item">
+            <span>Joystik</span>
+            <button id="joystick-toggle">Açık</button>
+        </div>
+        <hr>
+        <span>Grafikler</span>
+        <div class="setting-item" style="margin-top:10px;">
+            <button class="graphics-btn" data-quality="low">Düşük</button>
+            <button class="graphics-btn" data-quality="medium">Orta</button>
+        </div>
+        <div class="setting-item">
+            <button class="graphics-btn active" data-quality="high">Yüksek</button>
+            <button class="graphics-btn" data-quality="4k">4K</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        // --- Kodun geri kalanı tamamen aynıdır ---
+
+        // --- Sahne ve Temel Kurulum ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111122); 
+        scene.fog = new THREE.Fog(0x111122, 0, 15);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.6, 0); 
+        const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+        const textureLoader = new THREE.TextureLoader();
+        const floorTexture = textureLoader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
+        floorTexture.wrapS = THREE.RepeatWrapping; floorTexture.wrapT = THREE.RepeatWrapping; floorTexture.repeat.set(4, 4);
+        const bedTexture = textureLoader.load('https://threejs.org/examples/textures/fabric_pattern.jpg');
+        bedTexture.wrapS = THREE.RepeatWrapping; bedTexture.wrapT = THREE.RepeatWrapping; bedTexture.repeat.set(2, 2);
+        const ambientLight = new THREE.AmbientLight(0xdddddd, 0.5); 
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffddaa, 1, 10); 
+        pointLight.position.set(-4, 3, 3);
+        pointLight.castShadow = true;
+        scene.add(pointLight);
+        const loader = new THREE.GLTFLoader();
+        let motherModel, gunModel, jettModel;
+        const jettClones = [];
+        loader.load('https://threejs.org/examples/models/gltf/Michelle.glb', function (gltf) { motherModel = gltf.scene; motherModel.scale.set(1.1, 1.1, 1.1); motherModel.traverse(function (child) { if (child.isMesh) { child.castShadow = true; } }); motherModel.position.set(3, 0, 0); scene.add(motherModel); });
+        loader.load('https://threejs.org/examples/models/gltf/gun.glb', function (gltf) { gunModel = gltf.scene; gunModel.scale.set(0.2, 0.2, 0.2); gunModel.rotation.y = -Math.PI / 2; });
+        loader.load('https://threejs.org/examples/models/gltf/Xbot.glb', function (gltf) { jettModel = gltf.scene; jettModel.traverse(function (child) { if (child.isMesh) { child.material = new THREE.MeshStandardMaterial({color: 0xcccccc}); } }); });
+        const roomSize = 10; const roomGeometry = new THREE.BoxGeometry(roomSize, roomSize, roomSize); const roomMaterial = new THREE.MeshStandardMaterial({ map: floorTexture, side: THREE.BackSide }); const room = new THREE.Mesh(roomGeometry, roomMaterial); room.position.y = roomSize / 2 - 1; room.receiveShadow = true; scene.add(room);
+        const bedGeometry = new THREE.BoxGeometry(2, 0.8, 3); const bedMaterial = new THREE.MeshStandardMaterial({ map: bedTexture }); const bed = new THREE.Mesh(bedGeometry, bedMaterial); bed.position.set(0, 0.4, -1); bed.castShadow = true; scene.add(bed);
+        const backpackGeometry = new THREE.BoxGeometry(0.5, 0.6, 0.2); const backpackMaterial = new THREE.MeshStandardMaterial({ color: 0x3a3a3a }); const backpack = new THREE.Mesh(backpackGeometry, backpackMaterial); backpack.position.set(-2, 0.3, 3); scene.add(backpack);
+        let gun; let road, buildings = [], car; let isOutside = false, crashTriggered = false, isInHospital = false, isInHeaven = false, gatePassed = false; let guideMarker; 
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        const blocker = document.getElementById('blocker');
+        const instructions = document.getElementById('instructions');
+        let gameStarted = false;
+        
+        // GÜNCELLENDİ: StartGame artık countdown ekranını da gizliyor
+        function startGame() { if (gameStarted) return; gameStarted = true; controls.lock(); document.getElementById('countdown-screen').style.display = 'none'; blocker.style.display = 'none'; if (settings.joystick) { document.getElementById('joystick-container').style.display = 'block'; } if (!isInHospital && !isInHeaven) showDialogue(); }
+        
+        // GÜNCELLENDİ: Blocker'ın eski eventleri artık play butonunda
+        const playButton = document.getElementById('play-button');
+        playButton.addEventListener('click', startGame);
+        playButton.addEventListener('touchend', (e) => { e.preventDefault(); startGame(); });
+
+        controls.addEventListener('lock', () => { if (!gameStarted) startGame(); });
+        controls.addEventListener('unlock', () => { if(!gatePassed) { document.getElementById('countdown-screen').style.display = 'flex'; } else { blocker.style.display = 'none'; } document.getElementById('joystick-container').style.display = 'none'; gameStarted = false; });
+        scene.add(controls.getObject());
+        const keyStates = {};
+        document.addEventListener('keydown', (event) => { keyStates[event.code] = true; }); document.addEventListener('keyup', (event) => { keyStates[event.code] = false; });
+        const dialogueBox = document.getElementById('dialogue-box');
+        const story = [ { line: "Hadi oğlum, okul var!", speaker: 'Anne' }, { line: "Anne 5 dk daha yatayım...", speaker: 'Umut Talha' }, { line: '', speaker: '...' }, { line: "T-tamam anne!", speaker: 'Umut Talha' }, { line: '...', speaker: '...' }];
+        const hospitalStory = [ { line: "Nerdeyim ben?", speaker: 'Umut Talha' }, { line: "Oğlum, iyi misin?", speaker: 'Anne' }, { line: "İyiyim de... bana ne oldu anne?", speaker: 'Umut Talha' }, { line: "Araba çarptı...", speaker: 'Anne' }, { line: "...DEVAM EDECEK...", speaker: 'Sistem' }];
+        const heavenStory = [ { line: "İyi misin?", speaker: '???'}, { line: "İyi hissediyor musun?", speaker: '???'}, { line: "...", speaker: 'Sistem'}];
+        let currentStep = -1; let isScared = false;
+        function showDialogue() { let activeStory; if (gatePassed) { activeStory = heavenStory; } else if (isInHospital) { activeStory = hospitalStory; } else { activeStory = story; } if(currentStep === -1) currentStep = 0; if (currentStep < activeStory.length) { const current = activeStory[currentStep]; dialogueBox.innerText = current.line; dialogueBox.style.display = 'block'; if (!isInHospital && !isInHeaven) handleGameEvent(currentStep); } else { dialogueBox.style.display = 'none'; if(gatePassed) { document.getElementById('fade-overlay').style.opacity = '1'; controls.unlock(); } } }
+        const handleInteraction = () => { if (gameStarted && currentStep > -1) { currentStep++; showDialogue(); } };
+        document.addEventListener('click', (e) => { if(e.target.id !== 'settings-button' && !e.target.closest('#settings-panel') && e.target.id !== 'play-button') handleInteraction(); });
+        document.addEventListener('touchend', (e) => { if(e.target !== joystickContainer && e.target !== joystickStick && e.target.id !== 'settings-button' && !e.target.closest('#settings-panel') && e.target.id !== 'play-button') { handleInteraction(); }});
+        function handleGameEvent(step) { if (step === 2) { dialogueBox.style.display = 'none'; if (gunModel) { gun = gunModel; gun.position.set(2.6, 1.2, 0.4); scene.add(gun); } } if (step === 3) { isScared = true; if(gun) scene.remove(gun); } if (step === 4) { dialogueBox.style.display = 'none'; document.getElementById('fade-overlay').style.opacity = '1'; setTimeout(createOutsideWorld, 1500); } }
+        function createRoadTexture() { const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 512; const context = canvas.getContext('2d'); context.fillStyle = '#404040'; context.fillRect(0, 0, canvas.width, canvas.height); context.fillStyle = '#FFFFFF'; const lineWidth = 10; const lineLength = 80; const gapLength = 60; const centerX = canvas.width / 2 - lineWidth / 2; for (let y = 0; y < canvas.height; y += lineLength + gapLength) { context.fillRect(centerX, y, lineWidth, lineLength); } return new THREE.CanvasTexture(canvas); }
+        function createBuildingTexture() { const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 512; const context = canvas.getContext('2d'); context.fillStyle = '#C0C0C0'; context.fillRect(0, 0, canvas.width, canvas.height); context.fillStyle = '#334466'; const windowWidth = 40; const windowHeight = 60; const gapX = 32; const gapY = 40; for (let y = gapY / 2; y < canvas.height - windowHeight; y += windowHeight + gapY) { for (let x = gapX / 2; x < canvas.width - windowWidth; x += windowWidth + gapX) { context.fillRect(x, y, windowWidth, windowHeight); } } return new THREE.CanvasTexture(canvas); }
+        function createOutsideWorld() { scene.remove(room, bed, backpack, motherModel); scene.background = new THREE.Color(0x87ceeb); scene.fog = new THREE.Fog(0x87ceeb, 0, 50); pointLight.position.set(0, 20, 10); const roadTexture = createRoadTexture(); roadTexture.wrapS = THREE.RepeatWrapping; roadTexture.wrapT = THREE.RepeatWrapping; roadTexture.repeat.set(1, 10); const roadGeometry = new THREE.PlaneGeometry(8, 100); const roadMaterial = new THREE.MeshStandardMaterial({ map: roadTexture }); road = new THREE.Mesh(roadGeometry, roadMaterial); road.rotation.x = -Math.PI / 2; scene.add(road); const buildingTextureTemplate = createBuildingTexture(); buildingTextureTemplate.wrapS = THREE.RepeatWrapping; buildingTextureTemplate.wrapT = THREE.RepeatWrapping; for(let i = 0; i < 10; i++) { const height = Math.random() * 20 + 10; const buildingGeometry = new THREE.BoxGeometry(10, height, 10); const buildingTexture = buildingTextureTemplate.clone(); buildingTexture.needsUpdate = true; buildingTexture.repeat.set(2, Math.round(height/10)); const buildingMaterial = new THREE.MeshStandardMaterial({ map: buildingTexture }); const building = new THREE.Mesh(buildingGeometry, buildingMaterial); building.position.set(i % 2 === 0 ? 10 : -10, height/2, -i * 10); scene.add(building); buildings.push(building); } const carGeo = new THREE.BoxGeometry(2, 1, 4); const carMat = new THREE.MeshStandardMaterial({color: 0xaa0000}); car = new THREE.Mesh(carGeo, carMat); car.position.set(0, 0.5, -50); scene.add(car); camera.position.set(0, 1.6, 5); controls.getObject().position.set(0, 1.6, 5); isOutside = true; isScared = false; document.getElementById('fade-overlay').style.opacity = '0'; }
+        function createHeavenScene() { scene.remove(road, car); buildings.forEach(b => scene.remove(b)); buildings = []; isInHeaven = true; isOutside = false; scene.background = new THREE.Color(0xe0ffff); scene.fog = new THREE.Fog(0xe0ffff, 10, 50); ambientLight.intensity = 1.5; pointLight.intensity = 0.8; pointLight.position.set(0, 20, 0); camera.position.set(0, 1.6, 15); controls.getObject().position.set(0, 1.6, 15); controls.getObject().rotation.set(0, 0, 0); const heavenFloorTexture = textureLoader.load('https://threejs.org/examples/textures/clouds.png'); heavenFloorTexture.wrapS = THREE.RepeatWrapping; heavenFloorTexture.wrapT = THREE.RepeatWrapping; heavenFloorTexture.repeat.set(4,4); const heavenFloorGeo = new THREE.PlaneGeometry(100, 100); const heavenFloorMat = new THREE.MeshStandardMaterial({map: heavenFloorTexture}); const heavenFloor = new THREE.Mesh(heavenFloorGeo, heavenFloorMat); heavenFloor.rotation.x = -Math.PI / 2; scene.add(heavenFloor); const gateMaterial = new THREE.MeshStandardMaterial({color: 0xffd700}); const pillarGeo = new THREE.BoxGeometry(1, 8, 1); const leftPillar = new THREE.Mesh(pillarGeo, gateMaterial); leftPillar.position.set(-4, 4, 0); scene.add(leftPillar); const rightPillar = new THREE.Mesh(pillarGeo, gateMaterial); rightPillar.position.set(4, 4, 0); scene.add(rightPillar); const topPillar = new THREE.Mesh(new THREE.BoxGeometry(8, 1, 1), gateMaterial); topPillar.position.set(0, 8.5, 0); scene.add(topPillar); if(jettModel) { for(let i = 0; i < 5; i++) { const clone = jettModel.clone(); clone.scale.set(1.5, 1.5, 1.5); clone.position.set(-6 + i * 3, 0, 1.5); scene.add(clone); jettClones.push(clone); } } document.getElementById('fade-overlay').style.opacity = '0'; startGame(); }
+        const clock = new THREE.Clock(); const speed = 3.0; 
+        const joystickContainer = document.getElementById('joystick-container'); const joystickStick = document.getElementById('joystick-stick'); let joystickActive = false; let lookTouchIdentifier = null; let lastLookX = 0, lastLookY = 0;
+        joystickContainer.addEventListener('touchstart', (e) => { e.preventDefault(); joystickActive = true; }, { passive: false });
+        document.addEventListener('touchmove', (e) => { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const touch = e.changedTouches[i]; if (joystickActive && (touch.target === joystickContainer || touch.target === joystickStick)) { const rect = joystickContainer.getBoundingClientRect(); const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2; let deltaX = touch.clientX - centerX; let deltaY = touch.clientY - centerY; const maxDistance = rect.width / 2 - 30; const distance = Math.min(maxDistance, Math.sqrt(deltaX*deltaX + deltaY*deltaY)); const angle = Math.atan2(deltaY, deltaX); joystickStick.style.left = (rect.width / 2 - 30 + Math.cos(angle) * distance) + 'px'; joystickStick.style.top = (rect.height / 2 - 30 + Math.sin(angle) * distance) + 'px'; const deadzone = 0.2; keyStates['KeyW'] = (deltaY < -maxDistance * deadzone); keyStates['KeyS'] = (deltaY > maxDistance * deadzone); keyStates['KeyA'] = (deltaX < -maxDistance * deadzone); keyStates['KeyD'] = (deltaX > maxDistance * deadzone); } else if(lookTouchIdentifier === touch.identifier) { const deltaX = touch.clientX - lastLookX; const deltaY = touch.clientY - lastLookY; lastLookX = touch.clientX; lastLookY = touch.clientY; controls.getObject().rotation.y -= deltaX * 0.005; camera.rotation.x -= deltaY * 0.005; camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x)); } } }, { passive: false });
+        document.addEventListener('touchend', (e) => { for (let i = 0; i < e.changedTouches.length; i++) { const touch = e.changedTouches[i]; if (touch.target === joystickContainer || touch.target === joystickStick) { joystickActive = false; joystickStick.style.left = '30px'; joystickStick.style.top = '30px'; keyStates['KeyW'] = false; keyStates['KeyS'] = false; keyStates['KeyA'] = false; keyStates['KeyD'] = false; } if (lookTouchIdentifier === touch.identifier) { lookTouchIdentifier = null; } } });
+        document.addEventListener('touchstart', (e) => { if (e.target.id !== 'joystick-container' && e.target.id !== 'joystick-stick') { if (lookTouchIdentifier === null) { const touch = e.changedTouches[0]; lookTouchIdentifier = touch.identifier; lastLookX = touch.clientX; lastLookY = touch.clientY; } } });
+        let lastTime = performance.now(); let frames = 0; const fpsCounter = document.getElementById('fps-counter');
+        const settings = { joystick: true, graphics: 'high' };
+        const settingsButton = document.getElementById('settings-button');
+        const settingsPanel = document.getElementById('settings-panel');
+        const joystickToggle = document.getElementById('joystick-toggle');
+        const graphicsButtons = document.querySelectorAll('.graphics-btn');
+        settingsButton.addEventListener('click', () => { settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; });
+        settingsButton.addEventListener('touchend', (e) => { e.preventDefault(); settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; });
+        joystickToggle.addEventListener('click', () => { settings.joystick = !settings.joystick; updateJoystickSettings(); });
+        joystickToggle.addEventListener('touchend', (e) => { e.preventDefault(); settings.joystick = !settings.joystick; updateJoystickSettings(); });
+        function updateJoystickSettings() { if (settings.joystick) { joystickToggle.innerText = 'Açık'; joystickToggle.classList.remove('off'); if (gameStarted) joystickContainer.style.display = 'block'; } else { joystickToggle.innerText = 'Kapalı'; joystickToggle.classList.add('off'); joystickContainer.style.display = 'none'; } }
+        graphicsButtons.forEach(button => { button.addEventListener('click', (e) => { setGraphics(e.target.dataset.quality); }); });
+        function setGraphics(quality) { settings.graphics = quality; graphicsButtons.forEach(btn => btn.classList.remove('active')); document.querySelector(`.graphics-btn[data-quality="${quality}"]`).classList.add('active'); switch(quality) { case 'low': renderer.setPixelRatio(window.devicePixelRatio * 0.5); renderer.shadowMap.enabled = false; break; case 'medium': renderer.setPixelRatio(window.devicePixelRatio * 0.75); renderer.shadowMap.enabled = true; pointLight.shadow.mapSize.width = 1024; pointLight.shadow.mapSize.height = 1024; break; case 'high': renderer.setPixelRatio(window.devicePixelRatio); renderer.shadowMap.enabled = true; pointLight.shadow.mapSize.width = 2048; pointLight.shadow.mapSize.height = 2048; break; case '4k': renderer.setPixelRatio(window.devicePixelRatio * 2); renderer.shadowMap.enabled = true; pointLight.shadow.mapSize.width = 4096; pointLight.shadow.mapSize.height = 4096; break; } pointLight.shadow.map = null; }
+        setGraphics('high');
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            frames++; const time = performance.now(); if (time >= lastTime + 1000) { fpsCounter.innerText = 'FPS: ' + frames; lastTime = time; frames = 0; }
+            if (gameStarted && (!isInHeaven || !gatePassed)) { const moveDistance = speed * delta; if (keyStates['KeyW']) { controls.moveForward(moveDistance); } if (keyStates['KeyS']) { controls.moveForward(-moveDistance); } if (keyStates['KeyA']) { controls.moveRight(-moveDistance); } if (keyStates['KeyD']) { controls.moveRight(moveDistance); } }
+            if (isScared) { const shakeIntensity = 0.01; camera.position.x += (Math.random() - 0.5) * shakeIntensity; camera.position.y += (Math.random() - 0.5) * shakeIntensity; }
+            if (motherModel && !isOutside && !isInHeaven) { motherModel.lookAt(camera.position.x, motherModel.position.y, camera.position.z); }
+            if (isInHeaven) { jettClones.forEach(jett => { jett.lookAt(camera.position.x, 1.6, camera.position.z); }); if (camera.position.z < 0 && !gatePassed) { gatePassed = true; currentStep = -1; showDialogue(); } }
+            if (isOutside && !crashTriggered && camera.position.z < -10) { crashTriggered = true; }
+            if (crashTriggered) { car.position.z += 80 * delta; if (car.position.distanceTo(camera.position) < 3) { if (!isInHeaven) { document.getElementById('fade-overlay').style.opacity = '1'; controls.unlock(); crashTriggered = false; setTimeout(createHeavenScene, 1500); } } }
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('load', () => {
+            const splashScreen = document.getElementById('splash-screen');
+            const countdownScreen = document.getElementById('countdown-screen');
+            setTimeout(() => {
+                splashScreen.style.opacity = '0';
+                setTimeout(() => {
+                    splashScreen.style.display = 'none';
+                    // YENİ EKLENDİ: Animasyon bitince geri sayım ekranını göster
+                    countdownScreen.style.display = 'flex';
+                    startCountdown();
+                }, 1000); 
+            }, 4000); 
+        });
+
+        // YENİ EKLENDİ: Geri sayım sayacı mantığı
+        function startCountdown() {
+            const countdownElement = document.getElementById('timer');
+            const twoDaysFromNow = new Date().getTime() + (2 * 24 * 60 * 60 * 1000);
+
+            const interval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = twoDaysFromNow - now;
+
+                if (distance < 0) {
+                    clearInterval(interval);
+                    countdownElement.innerHTML = "Süre Doldu!";
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                countdownElement.innerHTML = `${days}gün/${hours}saat/${minutes}dk/${seconds}sn`;
+            }, 1000);
+        }
+
+    </script>
+</body>
+</html>

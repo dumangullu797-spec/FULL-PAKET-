@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G - OS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fGVufDB8fHx8fA%3D%3D') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
+            user-select: none;
+        }
+        
+        /* RENKLİ LOGO STİLLERİ */
+        .fa-desktop { color: #00bcd4; }
+        .fa-trash-can { color: #bdbdbd; }
+        .fa-folder-open { color: #ffca28; }
+        .fa-pencil { color: #ff9800; }
+        .fa-keyboard { color: #e0e0e0; }
+        .fa-dice-d20 { color: #ef5350; }
+        .fa-hand-pointer { color: #42a5f5; }
+
+
+        #desktop { width: 100%; height: calc(100% - 40px); position: relative; padding: 20px; box-sizing: border-box; }
+        .desktop-icon { width: 80px; text-align: center; padding: 10px 0; border-radius: 5px; transition: background-color 0.2s; position: absolute; z-index: 100; }
+        .desktop-icon:hover { background-color: rgba(255, 255, 255, 0.15); cursor: pointer; }
+        .desktop-icon i { font-size: 36px; margin-bottom: 8px; }
+        .desktop-icon span { display: block; font-size: 13px; text-shadow: 1px 1px 3px rgba(0,0,0,0.7); word-wrap: break-word; }
+
+        #taskbar { width: 100%; height: 40px; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); position: fixed; bottom: 0; left: 0; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box; z-index: 10000; }
+        .start-button { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; border-radius: 4px; }
+        .start-button .g-logo { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 22px; color: #4285F4; text-shadow: 1px 1px 1px #000; }
+        .start-button:hover { background-color: rgba(255, 255, 255, 0.2); }
+        .taskbar-icons { display: flex; align-items: center; margin-left: 10px; }
+        .taskbar-icons i { font-size: 20px; margin: 0 8px; padding: 5px; cursor: pointer; transition: background-color 0.2s; border-radius: 4px; }
+        .taskbar-icons i:hover { background-color: rgba(255, 255, 255, 0.2); }
+        
+        #taskbar-apps { display: flex; align-items: center; height: 100%; margin-left: 10px; }
+        .taskbar-app { background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 0 10px; height: 30px; line-height: 30px; border-radius: 4px; margin: 0 4px; font-size: 14px; cursor: pointer; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .taskbar-app.active { background-color: rgba(66, 133, 244, 0.5); }
+        .taskbar-app:hover { background-color: rgba(255,255,255,0.2); }
+
+        .taskbar-center { position: absolute; left: 50%; transform: translateX(-50%); font-size: 14px; color: #ccc; }
+        .system-tray { margin-left: auto; display: flex; align-items: center; height: 100%; }
+        .system-tray i { font-size: 16px; margin: 0 8px; cursor: pointer; }
+        #clock { font-size: 14px; padding: 0 10px; }
+
+        .window { position: absolute; top: 100px; left: 150px; width: 600px; height: 400px; background-color: #2b2b2b; border: 1px solid #555; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: flex; flex-direction: column; resize: both; overflow: hidden; min-width: 250px; min-height: 150px; z-index: 1000; }
+        .title-bar { width: 100%; height: 30px; background-color: #1e1e1e; display: flex; align-items: center; justify-content: space-between; cursor: move; flex-shrink: 0; }
+        .title-bar-text { margin-left: 10px; font-weight: bold; }
+        .window-controls { display: flex; margin-right: 5px; }
+        .window-controls button { width: 25px; height: 25px; border: none; background: none; color: white; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .window-controls button:hover { background-color: rgba(255,255,255,0.2); }
+        .window-controls .close-btn:hover { background-color: #e81123; }
+        .window-content { padding: 15px; flex-grow: 1; overflow-y: auto; background-color: #333; color: #eee; }
+        .window-content iframe { width: 100%; height: 100%; border: none; background-color: #fff; }
+        .window-content ul { list-style: none; padding: 0; margin: 0; }
+        .window-content li { padding: 8px; border-bottom: 1px solid #444; display: flex; align-items: center; justify-content: space-between; cursor: pointer;}
+        .window-content li:hover { background-color: #4a4a4a; }
+        .window-content li i { margin-right: 10px; }
+        .delete-file-btn { background: none; border: none; color: #ff6b6b; cursor: pointer; }
+        
+        .store-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #555; }
+        .store-item-info { display: flex; flex-direction: column; }
+        .store-item-info span { font-size: 16px; font-weight: bold; }
+        .store-item-info small { color: #bbb; }
+        .download-btn { background-color: #4285F4; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+        .download-btn:hover { background-color: #5a95f5; }
+        .download-btn:disabled { background-color: #555; color: #aaa; cursor: not-allowed; }
+
+        #virtual-keyboard { position: fixed; bottom: 45px; left: 50%; transform: translateX(-50%); background-color: #222; padding: 10px; border-radius: 5px; display: none; z-index: 9999; }
+        .keyboard-row { display: flex; justify-content: center; }
+        .key { background-color: #444; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px 15px; margin: 3px; cursor: pointer; }
+        .key:hover { background-color: #666; }
+        
+        #drawing-app { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: white; display: none; z-index: 10001; }
+        #drawing-canvas { cursor: crosshair; display: block; }
+        #left-toolbar { position: absolute; top: 10px; left: 10px; background-color: #f0f0f0; border: 1px solid #ccc; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        #top-right-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 10px; }
+        .tool-button { width: 45px; height: 45px; font-size: 20px; border: 1px solid #ccc; cursor: pointer; color: #333; display: flex; align-items: center; justify-content: center; border-radius: 5px; }
+        .tool-button.active { background-color: #a0c4ff; }
+        #color-palette { display: flex; flex-wrap: wrap; width: 50px; }
+        .color-box { width: 20px; height: 20px; margin: 2px; cursor: pointer; border: 1px solid #000; }
+        
+        #start-menu { position: fixed; bottom: 40px; left: 0; width: 350px; height: 500px; background-color: rgba(30, 30, 30, 0.85); backdrop-filter: blur(15px); border: 1px solid #555; border-radius: 8px 8px 0 0; display: none; flex-direction: column; z-index: 9999; }
+        .start-menu-content { padding: 15px; flex-grow: 1; }
+        .start-menu-item { display: flex; align-items: center; padding: 10px; border-radius: 5px; cursor: pointer; }
+        .start-menu-item:hover { background-color: rgba(255,255,255,0.1); }
+        .start-menu-item i { font-size: 20px; margin-right: 15px; width: 25px; text-align: center; }
+        
+        #network-popup { position: fixed; bottom: 45px; right: 10px; width: 250px; background-color: rgba(40, 40, 40, 0.9); backdrop-filter: blur(10px); border-radius: 8px; padding: 15px; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: none; z-index: 9999; }
+    </style>
+</head>
+<body>
+
+    <div id="desktop"></div>
+    <div id="taskbar"><div class="start-button"><span class="g-logo">G</span></div><div class="taskbar-icons"><i id="pencil-btn" class="fa-solid fa-pencil"></i><i id="keyboard-btn" class="fa-solid fa-keyboard"></i></div><div id="taskbar-apps"></div><div class="taskbar-center">mert tarafından yapıldı</div><div class="system-tray"><i id="network-btn" class="fa-solid fa-wifi"></i><div id="clock"></div></div></div>
+    <div id="virtual-keyboard"><div class="keyboard-row"><div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div></div><div class="keyboard-row"><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div></div><div class="keyboard-row"><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div></div></div>
+    <div id="start-menu"><div class="start-menu-content"><h3>Uygulamalar</h3><div id="start-menu-apps"></div><hr><h3>Haberler</h3><p>Haberler servisi yakında...</p></div></div>
+    <div id="network-popup"><h4>İnternet Durumu</h4><p><strong>Bağlantı Türü:</strong> <span id="conn-type">Bilinmiyor</span></p><p><strong>Download:</strong> <span id="down-speed">--</span> Mbps</p><p><strong>Upload:</strong> <span id="up-speed">--</span> Mbps</p><small>Not: Hız değerleri simülasyondur.</small></div>
+    <div id="drawing-app"><canvas id="drawing-canvas"></canvas><div id="left-toolbar"><button id="pencil-tool" class="tool-button active" title="Kalem"><i class="fa-solid fa-pencil"></i></button><button id="eraser-tool" class="tool-button" title="Silgi"><i class="fa-solid fa-eraser"></i></button><button id="clear-canvas-btn" class="tool-button" title="Temizle">C</button><input type="range" id="brush-size" min="1" max="50" value="5" title="Fırça Boyutu"><div id="color-palette"></div></div><div id="top-right-controls"><button id="save-drawing-btn" class="tool-button" title="Kaydet"><i class="fa-solid fa-save"></i></button><button id="close-drawing-btn" class="tool-button" title="Kapat"><i class="fa-solid fa-times"></i></button></div></div>
+
+    <script>
+        const desktop = document.getElementById('desktop');
+        let highestZIndex = 1000;
+        let installedAppCount = 0;
+
+        let files = [ { id: Date.now() + 1, name: 'ornek-dosya.txt', type: 'file', content: 'Bu bir test dosyasıdır.' } ];
+        let trash = [];
+
+        const icons = [
+            { name: 'sistem', icon: 'fa-solid fa-desktop', action: openSystemInfoWindow },
+            { name: 'çöp kutusu', icon: 'fa-solid fa-trash-can', action: openTrashWindow },
+            { name: 'dosyalar', icon: 'fa-solid fa-folder-open', action: openFilesWindow },
+            // YOUTUBE ARTIK ORİJİNAL TARAYICIDA AÇILIYOR
+            { name: 'youtube', icon: 'fa-brands fa-youtube', color: '#ff0000', action: () => window.open('https://www.youtube.com', '_blank')},
+            { name: 'crhome', icon: 'fa-brands fa-chrome', color: '#4285F4', action: () => createWebWindow('https://www.google.com/webhp?igu=1', 'Crhome')},
+            { name: 'mağaza', icon: 'fa-solid fa-store', color: '#8A63D2', action: openStoreWindow}
+        ];
+
+        icons.forEach((item, index) => { createDesktopIcon(`icon-${item.name}`, item.name, item.icon, item.action, item.color, index); });
+        
+        function createDesktopIcon(id, name, iconClass, action, color, index) {
+            const iconEl = document.createElement('div');
+            iconEl.className = 'desktop-icon';
+            iconEl.id = id;
+            iconEl.innerHTML = `<i class="${iconClass}" style="${color ? `color:${color}` : ''}"></i><span>${name}</span>`;
+            if (index !== undefined) {
+                iconEl.style.top = `${20 + index * 100}px`;
+                iconEl.style.left = `20px`;
+            } else {
+                iconEl.style.top = `${20 + installedAppCount * 100}px`;
+                iconEl.style.right = `20px`;
+                installedAppCount++;
+            }
+            iconEl.addEventListener('dblclick', action);
+            makeElementDraggable(iconEl);
+            desktop.appendChild(iconEl);
+        }
+
+        function updateClock() { const now = new Date(); const hours = String(now.getHours()).padStart(2, '0'); const minutes = String(now.getMinutes()).padStart(2, '0'); document.getElementById('clock').textContent = `${hours}:${minutes}`; }
+        setInterval(updateClock, 1000); updateClock();
+
+        function createWindow(title, contentHTML, onWindowCreated = null) {
+            highestZIndex++;
+            const win = document.createElement('div');
+            win.className = 'window';
+            const windowId = 'window-' + Date.now();
+            win.id = windowId;
+            win.style.zIndex = highestZIndex;
+            
+            win.innerHTML = `<div class="title-bar"><span class="title-bar-text">${title}</span><div class="window-controls"><button class="minimize-btn" title="Simge Durumuna Küçült"><i class="fa-solid fa-window-minimize"></i></button><button class="maximize-btn" title="Ekranı Kapla"><i class="fa-regular fa-clone"></i></button><button class="close-btn" title="Kapat"><i class="fa-solid fa-times"></i></button></div></div><div class="window-content" style="${title.startsWith('Görüntü') || ['Crhome', 'YouTube', 'RPG Game', 'Clicking Game'].includes(title) ? 'padding:0; overflow:hidden;' : ''}">${contentHTML}</div>`;
+            
+            desktop.appendChild(win);
+            makeElementDraggable(win, win.querySelector('.title-bar'));
+            
+            const taskbarApp = document.createElement('div');
+            taskbarApp.className = 'taskbar-app active';
+            taskbarApp.textContent = title;
+            taskbarApp.dataset.windowId = windowId;
+            document.getElementById('taskbar-apps').appendChild(taskbarApp);
+
+            taskbarApp.addEventListener('click', () => toggleMinimize(windowId));
+            const bringToFront = () => { highestZIndex++; win.style.zIndex = highestZIndex; document.querySelectorAll('.taskbar-app').forEach(a => a.classList.remove('active')); taskbarApp.classList.add('active'); };
+            win.addEventListener('mousedown', bringToFront);
+            win.querySelector('.close-btn').addEventListener('click', () => { win.remove(); taskbarApp.remove(); });
+            win.querySelector('.minimize-btn').addEventListener('click', () => toggleMinimize(windowId, true));
+            
+            const maximizeBtn = win.querySelector('.maximize-btn');
+            let isMaximized = false; let originalState = {};
+            maximizeBtn.addEventListener('click', () => { if (!isMaximized) { originalState = { top: win.style.top, left: win.style.left, width: win.style.width, height: win.style.height }; win.style.top = '0'; win.style.left = '0'; win.style.width = '100%'; win.style.height = 'calc(100% - 40px)'; win.style.resize = 'none'; isMaximized = true; } else { win.style.top = originalState.top; win.style.left = originalState.left; win.style.width = originalState.width; win.style.height = originalState.height; win.style.resize = 'both'; isMaximized = false; } });
+
+            if (onWindowCreated) { onWindowCreated(win); }
+            bringToFront();
+            return win;
+        }
+        
+        function toggleMinimize(windowId, forceMinimize = false) {
+            const win = document.getElementById(windowId);
+            const taskbarApp = document.querySelector(`.taskbar-app[data-window-id="${windowId}"]`);
+            if (!win) return;
+            if (win.style.display !== 'none' && forceMinimize) { win.style.display = 'none'; taskbarApp.classList.remove('active'); } else if (win.style.display !== 'none' && !forceMinimize && win.style.zIndex == highestZIndex) { win.style.display = 'none'; taskbarApp.classList.remove('active'); } else { win.style.display = 'flex'; highestZIndex++; win.style.zIndex = highestZIndex; document.querySelectorAll('.taskbar-app').forEach(a => a.classList.remove('active')); taskbarApp.classList.add('active'); }
+        }
+
+        function createWebWindow(url, title){ const content = `<iframe src="${url}"></iframe>`; createWindow(title, content); }
+        function openSystemInfoWindow() { const cpuCores = navigator.hardwareConcurrency || 'Bilgi Alınamadı'; const ram = navigator.deviceMemory ? `${navigator.deviceMemory} GB (Yaklaşık)` : 'Bilgi Alınamadı'; const content = `<h3>Sistem Bilgileri</h3><p><strong>İşlemci Çekdek Sayısı:</strong> ${cpuCores}</p><p><strong>RAM:</strong> ${ram}</p><p><strong>Ekran Kartı:</strong> Tarayıcı güvenlik kısıtlamaları nedeniyle bu bilgi alınamaz.</p>`; createWindow('Sistem Bilgileri', content); }
+        function openFilesWindow() { const win = createWindow('Dosyalar', '<ul></ul>'); renderFiles(win); }
+        function renderFiles(win) { const ul = win.querySelector('ul'); ul.innerHTML = ''; files.forEach(file => { const li = document.createElement('li'); let iconClass = 'fa-file'; if(file.type === 'folder') iconClass = 'fa-folder'; if(file.type === 'image') iconClass = 'fa-file-image'; li.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${file.name}`; li.addEventListener('dblclick', () => { if (file.type === 'image') { const imageContent = `<img src="${file.content}" style="width:100%; height:100%; object-fit:contain;">`; createWindow(`Görüntüleyici - ${file.name}`, imageContent); } }); ul.appendChild(li); }); }
+        function openTrashWindow() { const win = createWindow('Çöp Kutusu', '<ul></ul>'); renderTrash(win); }
+        function renderTrash(win) { const ul = win.querySelector('ul'); ul.innerHTML = ''; trash.forEach((file, index) => { const li = document.createElement('li'); li.innerHTML = `<span><i class="fa-solid fa-file"></i> ${file.name}</span><button class="delete-file-btn" data-index="${index}"><i class="fa-solid fa-trash-can"></i> Kalıcı Olarak Sil</button>`; ul.appendChild(li); }); ul.querySelectorAll('.delete-file-btn').forEach(btn => { btn.addEventListener('click', (e) => { const fileIndex = e.currentTarget.dataset.index; trash.splice(fileIndex, 1); renderTrash(win); }); }); }
+        function makeElementDraggable(elmnt, handle) { let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0; const dragHandle = handle || elmnt; dragHandle.onmousedown = dragMouseDown; function dragMouseDown(e) { e = e || window.event; e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; } function elementDrag(e) { e = e || window.event; e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; elmnt.style.top = (elmnt.offsetTop - pos2) + "px"; elmnt.style.left = (elmnt.offsetLeft - pos1) + "px"; } function closeDragElement() { document.onmouseup = null; document.onmousemove = null; } }
+        const keyboardBtn = document.getElementById('keyboard-btn'); const virtualKeyboard = document.getElementById('virtual-keyboard'); keyboardBtn.addEventListener('click', () => { const isVisible = virtualKeyboard.style.display === 'block'; virtualKeyboard.style.display = isVisible ? 'none' : 'block'; });
+        const drawingApp = document.getElementById('drawing-app'); const canvas = document.getElementById('drawing-canvas'); const ctx = canvas.getContext('2d'); let isDrawing = false; const pencilTool = document.getElementById('pencil-tool'); const eraserTool = document.getElementById('eraser-tool'); const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF']; const colorPalette = document.getElementById('color-palette');
+        colors.forEach(color => { const colorBox = document.createElement('div'); colorBox.className = 'color-box'; colorBox.style.backgroundColor = color; colorBox.addEventListener('click', () => { ctx.strokeStyle = color; pencilTool.click(); }); colorPalette.appendChild(colorBox); });
+        document.getElementById('pencil-btn').addEventListener('click', () => { drawingApp.style.display = 'block'; canvas.width = window.innerWidth; canvas.height = window.innerHeight; ctx.lineCap = 'round'; ctx.lineWidth = document.getElementById('brush-size').value; ctx.strokeStyle = '#000000'; pencilTool.click(); });
+        document.getElementById('close-drawing-btn').addEventListener('click', () => { drawingApp.style.display = 'none'; });
+        pencilTool.addEventListener('click', () => { ctx.globalCompositeOperation = 'source-over'; pencilTool.classList.add('active'); eraserTool.classList.remove('active'); });
+        eraserTool.addEventListener('click', () => { ctx.globalCompositeOperation = 'destination-out'; eraserTool.classList.add('active'); pencilTool.classList.remove('active'); });
+        document.getElementById('clear-canvas-btn').addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+        document.getElementById('brush-size').addEventListener('input', (e) => ctx.lineWidth = e.target.value);
+        document.getElementById('save-drawing-btn').addEventListener('click', () => { const imageName = `cizim-${Date.now()}.png`; const imageData = canvas.toDataURL('image/png'); files.push({ id: Date.now(), name: imageName, type: 'image', content: imageData }); alert(`"${imageName}" dosyası "Dosyalar" uygulamasına kaydedildi!`); drawingApp.style.display = 'none'; document.querySelectorAll('.window').forEach(win => { if (win.querySelector('.title-bar-text')?.textContent === 'Dosyalar') { renderFiles(win); } }); });
+        function startDrawing(e) { isDrawing = true; draw(e); } function stopDrawing() { isDrawing = false; ctx.beginPath(); } function draw(e) { if (!isDrawing) return; ctx.lineTo(e.clientX, e.clientY); ctx.stroke(); ctx.beginPath(); ctx.moveTo(e.clientX, e.clientY); }
+        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mousemove', draw);
+        const startBtn = document.querySelector('.start-button'); const startMenu = document.getElementById('start-menu'); const startMenuApps = document.getElementById('start-menu-apps');
+        icons.forEach(icon => { const item = document.createElement('div'); item.className = 'start-menu-item'; item.innerHTML = `<i class="${icon.icon}" style="${icon.color ? `color:${icon.color}` : ''}"></i><span>${icon.name}</span>`; item.onclick = () => { icon.action(); startMenu.style.display = 'none'; }; startMenuApps.appendChild(item); });
+        startBtn.addEventListener('click', (e) => { e.stopPropagation(); const isVisible = startMenu.style.display === 'flex'; startMenu.style.display = isVisible ? 'none' : 'flex'; });
+        document.addEventListener('click', (e) => { if (!startMenu.contains(e.target) && e.target !== startBtn && !startBtn.contains(e.target)) { startMenu.style.display = 'none'; } });
+        const networkBtn = document.getElementById('network-btn'); const networkPopup = document.getElementById('network-popup');
+        networkBtn.addEventListener('click', (e) => { e.stopPropagation(); const isVisible = networkPopup.style.display === 'block'; if (!isVisible) { document.getElementById('conn-type').textContent = navigator.connection?.type || 'Wi-Fi'; document.getElementById('down-speed').textContent = (Math.random() * (100 - 20) + 20).toFixed(2); document.getElementById('up-speed').textContent = (Math.random() * (20 - 5) + 5).toFixed(2); } networkPopup.style.display = isVisible ? 'none' : 'block'; });
+        document.addEventListener('click', (e) => { if (!networkPopup.contains(e.target) && e.target !== networkBtn) { networkPopup.style.display = 'none'; } });
+
+        // MAĞAZA FONKSİYONLARI
+        function openStoreWindow() {
+            // İndirme butonlarının durumunu kontrol et
+            const isRpgInstalled = !!document.getElementById('icon-rpg-game');
+            const isClickingInstalled = !!document.getElementById('icon-clicking-game');
+
+            const content = `
+                <div class="store-item">
+                    <div class="store-item-info"><span><i class="fa-solid fa-dice-d20"></i> RPG Game</span><small>Sürüm 1.1 Alpha</small></div>
+                    <button id="download-btn-rpg" class="download-btn" onclick="installGame('rpg-game', 'RPG Game', 'https://rpgame.playcode.io/', 'fa-solid fa-dice-d20', 'download-btn-rpg')" ${isRpgInstalled ? 'disabled' : ''}>
+                        ${isRpgInstalled ? 'Yüklendi' : 'İndir'}
+                    </button>
+                </div>
+                <div class="store-item">
+                     <div class="store-item-info"><span><i class="fa-solid fa-hand-pointer"></i> Clicking Game</span><small>Son Sürüm</small></div>
+                    <button id="download-btn-clicking" class="download-btn" onclick="installGame('clicking-game', 'Clicking Game', 'https://2614517.playcode.io/', 'fa-solid fa-hand-pointer', 'download-btn-clicking')" ${isClickingInstalled ? 'disabled' : ''}>
+                        ${isClickingInstalled ? 'Yüklendi' : 'İndir'}
+                    </button>
+                </div>
+            `;
+            createWindow('Mağaza', content);
+        }
+
+        function installGame(id, name, url, iconClass, buttonId) {
+            if (document.getElementById(`icon-${id}`)) {
+                alert(`${name} zaten masaüstünde mevcut.`);
+                return;
+            }
+            // OYUNLAR ARTIK ORİJİNAL TARAYICIDA AÇILIYOR
+            const action = () => window.open(url, '_blank');
+            createDesktopIcon(`icon-${id}`, name, iconClass, action);
+            alert(`${name} masaüstüne eklendi!`);
+            
+            // Butonu güncelle
+            const button = document.getElementById(buttonId);
+            if(button) {
+                button.disabled = true;
+                button.textContent = 'Yüklendi';
+            }
+        }
+    </script>
+
+</body>
+</html>
